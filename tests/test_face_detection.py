@@ -74,7 +74,7 @@ def test_image_analysis_detects_faces_from_provider(client) -> None:
     )
 
     assert response.status_code == 200
-    findings = response.json()["findings"]
+    findings = response.json()["data"]["findings"]
     assert [item["kind"] for item in findings] == [
         "face_region",
         "face_subregion",
@@ -109,7 +109,7 @@ def test_image_transform_uses_detected_faces_with_configuration_default(client) 
         },
     )
     assert configuration_response.status_code == 201
-    configuration_id = configuration_response.json()["id"]
+    configuration_id = configuration_response.json()["data"]["id"]
 
     image = Image.new("RGB", (20, 20), color="white")
     buffer = BytesIO()
@@ -132,6 +132,6 @@ def test_image_transform_uses_detected_faces_with_configuration_default(client) 
     )
 
     assert response.status_code == 200
-    output_path = response.json()["stored_output_path"]
+    output_path = response.json()["data"]["stored_output_path"]
     transformed = Image.open(output_path)
     assert transformed.getpixel((4, 4)) != (255, 255, 255)

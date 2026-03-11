@@ -37,7 +37,7 @@ def test_image_region_transformation_persists_output(client) -> None:
         },
     )
     assert response.status_code == 200
-    body = response.json()
+    body = response.json()["data"]
     output_path = Path(body["stored_output_path"])
     assert output_path.exists()
     transformed = Image.open(output_path)
@@ -72,7 +72,7 @@ def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
         },
     )
     assert analysis_response.status_code == 200
-    analysis = analysis_response.json()
+    analysis = analysis_response.json()["data"]
     finding_id = analysis["findings"][0]["id"]
 
     transform_without_review = client.post(
@@ -80,7 +80,7 @@ def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
         json={"job_id": analysis["job_id"]},
     )
     assert transform_without_review.status_code == 200
-    unchanged_path = Path(transform_without_review.json()["stored_output_path"])
+    unchanged_path = Path(transform_without_review.json()["data"]["stored_output_path"])
     assert Image.open(unchanged_path).getpixel((5, 5)) == (255, 255, 255)
 
     review_response = client.post(
@@ -105,7 +105,7 @@ def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
         json={"job_id": analysis["job_id"]},
     )
     assert transform_with_review.status_code == 200
-    reviewed_path = Path(transform_with_review.json()["stored_output_path"])
+    reviewed_path = Path(transform_with_review.json()["data"]["stored_output_path"])
     assert reviewed_path.exists()
     transformed = Image.open(reviewed_path)
     assert transformed.getpixel((5, 5)) != (255, 255, 255)

@@ -1,0 +1,100 @@
+name: obsura
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    shm_size: 256mb
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-obsura}
+      POSTGRES_USER: ${POSTGRES_USER:-obsura}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - obsura
+    logging: *default-logging
+
+  obsura-init-db:
+    image: ${OBSURA_API_IMAGE:?OBSURA_API_IMAGE is required}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      OBSURA_ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+    command:
+      - python
+      - -c
+      - |
+        from obsura_api.core.settings import Settings
+        from obsura_api.db.session import create_engine_from_settings, initialize_database
+        settings = Settings()
+        engine = create_engine_from_settings(settings)
+        initialize_database(engine)
+    networks:
+      - obsura
+    logging: *default-logging
+
+  obsura-api:
+    image: ${OBSURA_API_IMAGE:?OBSURA_API_IMAGE is required}
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      obsura-init-db:
+        condition: service_completed_successfully
+    environment:
+      OBSURA_ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      OBSURA_STORAGE_ROOT: /app/storage
+      OBSURA_AUTO_CREATE_SCHEMA: ${OBSURA_AUTO_CREATE_SCHEMA:-true}
+      OBSURA_RETAIN_SOURCE_CONTENT_BY_DEFAULT: ${OBSURA_RETAIN_SOURCE_CONTENT_BY_DEFAULT:-false}
+      OBSURA_FACE_DETECTOR_BACKEND: ${OBSURA_FACE_DETECTOR_BACKEND:-noop}
+    ports:
+      - ${OBSURA_BIND_HOST:-127.0.0.1}:${OBSURA_PORT:-8000}:8000
+    volumes:
+      - obsura_storage:/app/storage
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - obsura
+    logging: *default-logging
+
+networks:
+  obsura:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  obsura_storage:

@@ -19,6 +19,7 @@ from obsura_api.domain.workflows import (
     ImageWorkflowManifest,
     ImageWorkflowResponse,
 )
+
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.storage import StorageService

@@ -1,0 +1,1 @@
+{"exact_values":["acme","globex"],"content":"customer=acme customer=acme customer=globex","default_transformation":{"alias_prefix":"CUSTOMER","mode":"stable_alias"},"persist_job":false}

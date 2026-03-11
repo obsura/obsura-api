@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from obsura_api.db.models import Job, JobFinding, JobOutput
-from obsura_api.domain.common import BoundingBox
+from obsura_api.domain.common import BoundingBox, PaginationMeta, PaginationParams, build_pagination_meta
 from obsura_api.domain.enums import JobStatus
 from obsura_api.domain.jobs import JobOutputRecord, JobRead, JobReviewRequest
 from obsura_api.domain.transforms import TransformationRule
@@ -85,13 +85,19 @@ class JobService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def list_jobs(self) -> list[JobRead]:
+    def list_jobs(self, pagination: PaginationParams) -> tuple[list[JobRead], PaginationMeta]:
+        total_items = self.session.scalar(select(func.count()).select_from(Job)) or 0
         jobs = self.session.scalars(
             select(Job)
             .options(selectinload(Job.findings), selectinload(Job.outputs))
-            .order_by(Job.created_at.desc()),
+            .order_by(Job.created_at.desc())
+            .offset(pagination.offset)
+            .limit(pagination.page_size),
         ).all()
-        return [job_to_schema(job) for job in jobs]
+        return (
+            [job_to_schema(job) for job in jobs],
+            build_pagination_meta(params=pagination, total_items=total_items),
+        )
 
     def get_job(self, job_id: str) -> JobRead:
         job = self.session.scalar(
@@ -130,4 +136,3 @@ class JobService:
         self.session.commit()
         self.session.refresh(job)
         return self.get_job(job.id)
-

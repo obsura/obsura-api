@@ -115,100 +115,6 @@
       "description": "Persistent studio assets such as patterns, custom entities, reusable packs, profiles, and presets.",
       "item": [
         {
-          "name": "List Patterns",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "description": "List Patterns\n\nList saved patterns in reverse creation order.\n\nCollection helpers:\n- Automatically updates collection variables: patternId, patternIdsJson.",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/studio/patterns",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "studio",
-                "patterns"
-              ],
-              "query": []
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Response status is successful\", function () {",
-                  "  pm.expect(pm.response.code).to.be.below(400);",
-                  "});",
-                  "",
-                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
-                  "if (!contentType.includes(\"application/json\")) {",
-                  "  return;",
-                  "}",
-                  "",
-                  "const body = pm.response.json();",
-                  "const readPath = (value, path) => {",
-                  "  let current = value;",
-                  "  for (const segment of path) {",
-                  "    if (segment === '__collect__') {",
-                  "      if (!Array.isArray(current)) {",
-                  "        return undefined;",
-                  "      }",
-                  "      return current;",
-                  "    }",
-                  "    if (current === undefined || current === null) {",
-                  "      return undefined;",
-                  "    }",
-                  "    current = current[segment];",
-                  "  }",
-                  "  return current;",
-                  "};",
-                  "const collectPath = (value, path) => {",
-                  "  const markerIndex = path.indexOf('__collect__');",
-                  "  if (markerIndex === -1) {",
-                  "    return undefined;",
-                  "  }",
-                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
-                  "  if (!Array.isArray(collectionTarget)) {",
-                  "    return undefined;",
-                  "  }",
-                  "  const tail = path.slice(markerIndex + 1);",
-                  "  return collectionTarget",
-                  "    .map((entry) => readPath(entry, tail))",
-                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
-                  "};",
-                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"patternIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
-                  "for (const extractor of extractors) {",
-                  "  let assigned = false;",
-                  "  for (const path of extractor.paths) {",
-                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
-                  "    if (value === undefined || value === null || value === '') {",
-                  "      continue;",
-                  "    }",
-                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
-                  "    pm.collectionVariables.set(extractor.variable, serialized);",
-                  "    assigned = true;",
-                  "    break;",
-                  "  }",
-                  "  if (assigned) {",
-                  "    console.log(`Set collection variable ${extractor.variable}`);",
-                  "  }",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Create Pattern",
           "request": {
             "method": "POST",
@@ -293,7 +199,112 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Patterns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Patterns\n\nList saved patterns in reverse creation order.\n\nCollection helpers:\n- Automatically updates collection variables: patternId, patternIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/patterns?page={{page}}&page_size={{page_size}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "patterns"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": ""
+                },
+                {
+                  "key": "page_size",
+                  "value": "{{page_size}}",
+                  "description": ""
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"data\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"patternIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -388,7 +399,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -496,7 +507,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -558,100 +569,6 @@
             }
           },
           "response": []
-        },
-        {
-          "name": "List Custom Entities",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "description": "List Custom Entities\n\nList saved custom entities.\n\nCollection helpers:\n- Automatically updates collection variables: entityId, entityIdsJson.",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/studio/entities",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "studio",
-                "entities"
-              ],
-              "query": []
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Response status is successful\", function () {",
-                  "  pm.expect(pm.response.code).to.be.below(400);",
-                  "});",
-                  "",
-                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
-                  "if (!contentType.includes(\"application/json\")) {",
-                  "  return;",
-                  "}",
-                  "",
-                  "const body = pm.response.json();",
-                  "const readPath = (value, path) => {",
-                  "  let current = value;",
-                  "  for (const segment of path) {",
-                  "    if (segment === '__collect__') {",
-                  "      if (!Array.isArray(current)) {",
-                  "        return undefined;",
-                  "      }",
-                  "      return current;",
-                  "    }",
-                  "    if (current === undefined || current === null) {",
-                  "      return undefined;",
-                  "    }",
-                  "    current = current[segment];",
-                  "  }",
-                  "  return current;",
-                  "};",
-                  "const collectPath = (value, path) => {",
-                  "  const markerIndex = path.indexOf('__collect__');",
-                  "  if (markerIndex === -1) {",
-                  "    return undefined;",
-                  "  }",
-                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
-                  "  if (!Array.isArray(collectionTarget)) {",
-                  "    return undefined;",
-                  "  }",
-                  "  const tail = path.slice(markerIndex + 1);",
-                  "  return collectionTarget",
-                  "    .map((entry) => readPath(entry, tail))",
-                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
-                  "};",
-                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"entityIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
-                  "for (const extractor of extractors) {",
-                  "  let assigned = false;",
-                  "  for (const path of extractor.paths) {",
-                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
-                  "    if (value === undefined || value === null || value === '') {",
-                  "      continue;",
-                  "    }",
-                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
-                  "    pm.collectionVariables.set(extractor.variable, serialized);",
-                  "    assigned = true;",
-                  "    break;",
-                  "  }",
-                  "  if (assigned) {",
-                  "    console.log(`Set collection variable ${extractor.variable}`);",
-                  "  }",
-                  "}"
-                ]
-              }
-            }
-          ]
         },
         {
           "name": "Create Custom Entity",
@@ -738,7 +655,112 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Custom Entities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Custom Entities\n\nList saved custom entities.\n\nCollection helpers:\n- Automatically updates collection variables: entityId, entityIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/entities?page={{page}}&page_size={{page_size}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "entities"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": ""
+                },
+                {
+                  "key": "page_size",
+                  "value": "{{page_size}}",
+                  "description": ""
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"data\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"entityIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -833,7 +855,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -941,101 +963,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
-                  "for (const extractor of extractors) {",
-                  "  let assigned = false;",
-                  "  for (const path of extractor.paths) {",
-                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
-                  "    if (value === undefined || value === null || value === '') {",
-                  "      continue;",
-                  "    }",
-                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
-                  "    pm.collectionVariables.set(extractor.variable, serialized);",
-                  "    assigned = true;",
-                  "    break;",
-                  "  }",
-                  "  if (assigned) {",
-                  "    console.log(`Set collection variable ${extractor.variable}`);",
-                  "  }",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "List Configurations",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "description": "List Configurations\n\nList saved packs, profiles, and presets.\n\nCollection helpers:\n- Automatically updates collection variables: configurationId, configurationIdsJson.",
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/studio/configurations",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "studio",
-                "configurations"
-              ],
-              "query": []
-            }
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Response status is successful\", function () {",
-                  "  pm.expect(pm.response.code).to.be.below(400);",
-                  "});",
-                  "",
-                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
-                  "if (!contentType.includes(\"application/json\")) {",
-                  "  return;",
-                  "}",
-                  "",
-                  "const body = pm.response.json();",
-                  "const readPath = (value, path) => {",
-                  "  let current = value;",
-                  "  for (const segment of path) {",
-                  "    if (segment === '__collect__') {",
-                  "      if (!Array.isArray(current)) {",
-                  "        return undefined;",
-                  "      }",
-                  "      return current;",
-                  "    }",
-                  "    if (current === undefined || current === null) {",
-                  "      return undefined;",
-                  "    }",
-                  "    current = current[segment];",
-                  "  }",
-                  "  return current;",
-                  "};",
-                  "const collectPath = (value, path) => {",
-                  "  const markerIndex = path.indexOf('__collect__');",
-                  "  if (markerIndex === -1) {",
-                  "    return undefined;",
-                  "  }",
-                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
-                  "  if (!Array.isArray(collectionTarget)) {",
-                  "    return undefined;",
-                  "  }",
-                  "  const tail = path.slice(markerIndex + 1);",
-                  "  return collectionTarget",
-                  "    .map((entry) => readPath(entry, tail))",
-                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
-                  "};",
-                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"configurationIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1142,7 +1070,112 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Configurations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Configurations\n\nList saved packs, profiles, and presets.\n\nCollection helpers:\n- Automatically updates collection variables: configurationId, configurationIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/configurations?page={{page}}&page_size={{page_size}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "configurations"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": ""
+                },
+                {
+                  "key": "page_size",
+                  "value": "{{page_size}}",
+                  "description": ""
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"data\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"configurationIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1237,7 +1270,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1345,7 +1378,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1379,7 +1412,7 @@
             ],
             "description": "Search Studio\n\nSearch across saved studio assets and persisted jobs.",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/studio/search?q={{searchQuery}}",
+              "raw": "{{baseUrl}}/api/v1/studio/search?q={{searchQuery}}&page={{page}}&page_size={{page_size}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1393,6 +1426,16 @@
                 {
                   "key": "q",
                   "value": "{{searchQuery}}",
+                  "description": ""
+                },
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": ""
+                },
+                {
+                  "key": "page_size",
+                  "value": "{{page_size}}",
                   "description": ""
                 }
               ]
@@ -1418,7 +1461,7 @@
             ],
             "description": "List Jobs\n\nList persisted jobs with findings and generated outputs.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, jobIdsJson, findingId, outputFilePath.",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/jobs",
+              "raw": "{{baseUrl}}/api/v1/jobs?page={{page}}&page_size={{page_size}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1427,7 +1470,18 @@
                 "v1",
                 "jobs"
               ],
-              "query": []
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": ""
+                },
+                {
+                  "key": "page_size",
+                  "value": "{{page_size}}",
+                  "description": ""
+                }
+              ]
             }
           },
           "response": [],
@@ -1477,7 +1531,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        0,\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        0,\n        \"outputs\",\n        0,\n        \"output_file_path\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        0,\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"data\",\n        0,\n        \"outputs\",\n        0,\n        \"output_file_path\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1571,7 +1625,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"outputs\",\n        0,\n        \"output_file_path\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"data\",\n        \"outputs\",\n        0,\n        \"output_file_path\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1679,7 +1733,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1793,7 +1847,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -1901,7 +1955,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -2009,7 +2063,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -2125,7 +2179,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -2235,7 +2289,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"stored_output_path\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputMediaUrl\",\n    \"paths\": [\n      [\n        \"media_url\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"data\",\n        \"stored_output_path\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputMediaUrl\",\n    \"paths\": [\n      [\n        \"data\",\n        \"media_url\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",
@@ -2343,7 +2397,7 @@
                   "    .map((entry) => readPath(entry, tail))",
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
-                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"stored_output_path\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputMediaUrl\",\n    \"paths\": [\n      [\n        \"media_url\"\n      ]\n    ]\n  }\n];",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"data\",\n        \"stored_output_path\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputMediaUrl\",\n    \"paths\": [\n      [\n        \"data\",\n        \"media_url\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",

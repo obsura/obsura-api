@@ -8,8 +8,10 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
 from obsura_api.api.dependencies import get_container, get_db_session, get_settings
+from obsura_api.api.responses import success_response
 from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings
+from obsura_api.domain.common import ApiResponse
 from obsura_api.domain.workflows import (
     ImageJobTransformRequest,
     ImageWorkflowManifest,
@@ -23,14 +25,14 @@ SettingsDep = Annotated[Settings, Depends(get_settings)]
 ContainerDep = Annotated[AppContainer, Depends(get_container)]
 
 
-@router.post("/analyze", response_model=ImageWorkflowResponse)
+@router.post("/analyze", response_model=ApiResponse[ImageWorkflowResponse])
 async def analyze_image(
     session: SessionDep,
     settings: SettingsDep,
     container: ContainerDep,
     file: UploadFile = File(...),
     manifest_json: str = Form("{}"),
-) -> ImageWorkflowResponse:
+) -> ApiResponse[ImageWorkflowResponse]:
     """Analyze an uploaded image or screenshot into reviewable regions."""
 
     manifest = ImageWorkflowManifest.model_validate_json(manifest_json)
@@ -40,21 +42,23 @@ async def analyze_image(
         storage=container.storage,
         face_detector=container.face_detector,
     )
-    return service.analyze(
-        file_bytes=await file.read(),
-        filename=file.filename or "upload.bin",
-        manifest=manifest,
+    return success_response(
+        service.analyze(
+            file_bytes=await file.read(),
+            filename=file.filename or "upload.bin",
+            manifest=manifest,
+        ),
     )
 
 
-@router.post("/transform", response_model=ImageWorkflowResponse)
+@router.post("/transform", response_model=ApiResponse[ImageWorkflowResponse])
 async def transform_image(
     session: SessionDep,
     settings: SettingsDep,
     container: ContainerDep,
     file: UploadFile = File(...),
     manifest_json: str = Form("{}"),
-) -> ImageWorkflowResponse:
+) -> ApiResponse[ImageWorkflowResponse]:
     """Apply image-region transformations and persist the generated output."""
 
     manifest = ImageWorkflowManifest.model_validate_json(manifest_json)
@@ -64,20 +68,22 @@ async def transform_image(
         storage=container.storage,
         face_detector=container.face_detector,
     )
-    return service.transform(
-        file_bytes=await file.read(),
-        filename=file.filename or "upload.bin",
-        manifest=manifest,
+    return success_response(
+        service.transform(
+            file_bytes=await file.read(),
+            filename=file.filename or "upload.bin",
+            manifest=manifest,
+        ),
     )
 
 
-@router.post("/transform-job", response_model=ImageWorkflowResponse)
+@router.post("/transform-job", response_model=ApiResponse[ImageWorkflowResponse])
 def transform_image_job(
     payload: ImageJobTransformRequest,
     session: SessionDep,
     settings: SettingsDep,
     container: ContainerDep,
-) -> ImageWorkflowResponse:
+) -> ApiResponse[ImageWorkflowResponse]:
     """Transform a persisted image or screenshot job after review decisions are applied."""
 
     service = ImageWorkflowService(
@@ -86,4 +92,4 @@ def transform_image_job(
         storage=container.storage,
         face_detector=container.face_detector,
     )
-    return service.transform_job(payload)
+    return success_response(service.transform_job(payload))

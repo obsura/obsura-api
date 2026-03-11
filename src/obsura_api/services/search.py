@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from obsura_api.db.models import CustomEntity, Job, Pattern, StudioConfiguration
-from obsura_api.domain.common import SearchResultItem
+from obsura_api.domain.common import PaginationMeta, PaginationParams, SearchResultItem, build_pagination_meta
 from obsura_api.domain.enums import SearchResultKind
 
 
@@ -16,7 +16,11 @@ class SearchService:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def search(self, query: str) -> list[SearchResultItem]:
+    def search(
+        self,
+        query: str,
+        pagination: PaginationParams,
+    ) -> tuple[list[SearchResultItem], PaginationMeta]:
         normalized = f"%{query.lower()}%"
         results: list[SearchResultItem] = []
 
@@ -89,5 +93,7 @@ class SearchService:
             for item in jobs
         )
 
-        return results
-
+        results.sort(key=lambda item: (item.kind.value, item.name.lower(), item.id))
+        total_items = len(results)
+        paged_results = results[pagination.offset : pagination.offset + pagination.page_size]
+        return paged_results, build_pagination_meta(params=pagination, total_items=total_items)

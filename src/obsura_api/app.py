@@ -6,13 +6,26 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from obsura_api import __version__
+from fastapi import HTTPException
+from fastapi.exceptions import RequestValidationError
 from obsura_api.api.router import api_router
+from obsura_api.api.responses import (
+    http_exception_handler,
+    unhandled_exception_handler,
+    validation_exception_handler,
+)
 from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings, get_settings
 from obsura_api.db import models as _models  # noqa: F401
-from obsura_api.db.session import create_engine_from_settings, create_session_factory, initialize_database
+from obsura_api.db.session import (
+    create_engine_from_settings,
+    create_session_factory,
+    ensure_database_schema,
+    verify_database_connection,
+)
 from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import NoOpOCRProvider
 from obsura_api.services.storage import StorageService
@@ -62,12 +75,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     logger.info("Using %s database backend", settings.database_backend_summary)
     engine = create_engine_from_settings(settings)
+    verify_database_connection(engine)
+    initialized_tables = ensure_database_schema(
+        engine,
+        auto_create=settings.auto_create_schema,
+    )
+    if initialized_tables:
+        logger.info(
+            "Initialized database schema tables: %s",
+            ", ".join(initialized_tables),
+        )
     session_factory = create_session_factory(engine)
     storage = StorageService(settings)
     face_detector = build_face_detector(settings)
     logger.info("Using `%s` face detector backend", face_detector.name)
-    if settings.auto_create_schema:
-        initialize_database(engine)
 
     app = FastAPI(
         title=settings.app_name,
@@ -89,6 +110,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             }
         ],
     )
+    app.add_exception_handler(HTTPException, http_exception_handler)
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(Exception, unhandled_exception_handler)
 
     app.state.container = AppContainer(
         settings=settings,

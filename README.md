@@ -78,6 +78,33 @@ docker run --rm -p 8000:8000 obsura-api:dev
 The root [Dockerfile](Dockerfile) is multi-stage, runs as a non-root user, and
 is the image used by the `dev` branch CI workflow.
 
+For a containerized local or self-hosted deployment, use
+[docker-compose.yaml](docker-compose.yaml).
+
+Typical flow:
+
+1. Copy `.env.example` to `.env`.
+2. Set `OBSURA_API_IMAGE` to the image tag you want to run.
+3. Set `POSTGRES_PASSWORD` and `DATABASE_URL`.
+4. Start the stack with `docker compose up -d`.
+
+The compose stack includes:
+
+- PostgreSQL with a persistent named volume
+- a one-shot schema initialization service
+- the API container with a persistent storage volume
+- healthchecks and startup ordering
+
+Until Alembic migrations are added, the API container also defaults
+`OBSURA_AUTO_CREATE_SCHEMA=true` in the compose stack. That makes startup
+self-heal when the schema is missing and prevents the service from coming up
+healthy while `/api/v1/studio` fails due to absent tables.
+
+By default the API binds only to `127.0.0.1:8000`. After startup, access:
+
+- `http://localhost:8000/api/v1/health`
+- `http://localhost:8000/docs`
+
 ## CI/CD
 
 The repository includes a development workflow at

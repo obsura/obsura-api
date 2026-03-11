@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from obsura_api.db.models import CustomEntity, Pattern, StudioConfiguration
+from obsura_api.domain.common import PaginationMeta, PaginationParams, build_pagination_meta
 from obsura_api.domain.studio import (
     ConfigurationCreate,
     ConfigurationRead,
@@ -36,9 +37,21 @@ class StudioService:
         self.session.refresh(pattern)
         return PatternRead.model_validate(pattern, from_attributes=True)
 
-    def list_patterns(self) -> list[PatternRead]:
-        patterns = self.session.scalars(select(Pattern).order_by(Pattern.created_at.desc())).all()
-        return [PatternRead.model_validate(item, from_attributes=True) for item in patterns]
+    def list_patterns(
+        self,
+        pagination: PaginationParams,
+    ) -> tuple[list[PatternRead], PaginationMeta]:
+        total_items = self.session.scalar(select(func.count()).select_from(Pattern)) or 0
+        patterns = self.session.scalars(
+            select(Pattern)
+            .order_by(Pattern.created_at.desc())
+            .offset(pagination.offset)
+            .limit(pagination.page_size),
+        ).all()
+        return (
+            [PatternRead.model_validate(item, from_attributes=True) for item in patterns],
+            build_pagination_meta(params=pagination, total_items=total_items),
+        )
 
     def get_pattern(self, pattern_id: str) -> PatternRead:
         pattern = self.session.get(Pattern, pattern_id)
@@ -78,11 +91,21 @@ class StudioService:
         self.session.refresh(entity)
         return CustomEntityRead.model_validate(entity, from_attributes=True)
 
-    def list_custom_entities(self) -> list[CustomEntityRead]:
+    def list_custom_entities(
+        self,
+        pagination: PaginationParams,
+    ) -> tuple[list[CustomEntityRead], PaginationMeta]:
+        total_items = self.session.scalar(select(func.count()).select_from(CustomEntity)) or 0
         entities = self.session.scalars(
-            select(CustomEntity).order_by(CustomEntity.created_at.desc()),
+            select(CustomEntity)
+            .order_by(CustomEntity.created_at.desc())
+            .offset(pagination.offset)
+            .limit(pagination.page_size),
         ).all()
-        return [CustomEntityRead.model_validate(item, from_attributes=True) for item in entities]
+        return (
+            [CustomEntityRead.model_validate(item, from_attributes=True) for item in entities],
+            build_pagination_meta(params=pagination, total_items=total_items),
+        )
 
     def get_custom_entity(self, entity_id: str) -> CustomEntityRead:
         entity = self.session.get(CustomEntity, entity_id)
@@ -115,11 +138,21 @@ class StudioService:
         self.session.refresh(configuration)
         return self._configuration_to_schema(configuration)
 
-    def list_configurations(self) -> list[ConfigurationRead]:
+    def list_configurations(
+        self,
+        pagination: PaginationParams,
+    ) -> tuple[list[ConfigurationRead], PaginationMeta]:
+        total_items = self.session.scalar(select(func.count()).select_from(StudioConfiguration)) or 0
         configurations = self.session.scalars(
-            select(StudioConfiguration).order_by(StudioConfiguration.created_at.desc()),
+            select(StudioConfiguration)
+            .order_by(StudioConfiguration.created_at.desc())
+            .offset(pagination.offset)
+            .limit(pagination.page_size),
         ).all()
-        return [self._configuration_to_schema(item) for item in configurations]
+        return (
+            [self._configuration_to_schema(item) for item in configurations],
+            build_pagination_meta(params=pagination, total_items=total_items),
+        )
 
     def get_configuration(self, configuration_id: str) -> ConfigurationRead:
         configuration = self.session.get(StudioConfiguration, configuration_id)

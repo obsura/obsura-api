@@ -1,0 +1,1 @@
+{"name":"Infrastructure Domain","tags":["ops","safe-share"],"description":"Protect internal infrastructure domain","transformation":{"semantic_label":"INTERNAL_DOMAIN","mode":"semantic"},"selected_value":"internal.example.com","category":"infra"}

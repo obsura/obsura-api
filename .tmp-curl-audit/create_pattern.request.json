@@ -1,0 +1,1 @@
+{"name":"Internal URL Pattern","tags":["ops"],"description":"Protect internal URLs","matcher":{"applies_to":["text","structured_text"],"value":"internal\\.example\\.com","kind":"regex"},"transformation":{"semantic_label":"INTERNAL_DOMAIN","mode":"semantic"},"category":"infra"}

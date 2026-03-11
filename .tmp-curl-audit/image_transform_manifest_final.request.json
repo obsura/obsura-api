@@ -1,0 +1,1 @@
+{"regions":[{"entity_type":"SECRET_REGION","transformation":{"overlay_color":"#000000","mode":"mask"},"source":"manual","region":{"y":0,"width":10,"height":10,"x":0},"kind":"image_region","entity_name":"Secret block"}],"title":"Masked screenshot region"}
