@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from obsura_api.core.settings import Settings
@@ -16,10 +16,11 @@ def create_engine_from_settings(settings: Settings) -> Engine:
     """Create an engine that supports both local SQLite and production databases."""
 
     database_url = settings.database_url
+    parsed_url = make_url(database_url)
     connect_args: dict[str, object] = {}
 
-    if database_url.startswith("sqlite:///"):
-        database_path = database_url.replace("sqlite:///", "", 1)
+    if parsed_url.drivername.startswith("sqlite"):
+        database_path = parsed_url.database
         if database_path and database_path != ":memory:":
             Path(database_path).parent.mkdir(parents=True, exist_ok=True)
         connect_args["check_same_thread"] = False
@@ -47,4 +48,3 @@ def initialize_database(engine: Engine) -> None:
     """Create schema objects for local execution and tests."""
 
     Base.metadata.create_all(bind=engine)
-

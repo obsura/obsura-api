@@ -947,6 +947,48 @@
           }
         }
       }
+    },
+    "/api/v1/workflows/images/transform-job": {
+      "post": {
+        "tags": [
+          "image-workflows"
+        ],
+        "summary": "Transform Image Job",
+        "description": "Transform a persisted image or screenshot job after review decisions are applied.",
+        "operationId": "transform_image_job_api_v1_workflows_images_transform_job_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageJobTransformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageWorkflowResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1992,6 +2034,71 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "ImageFindingOverride": {
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "title": "Finding Id"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_id"
+        ],
+        "title": "ImageFindingOverride",
+        "description": "Override a stored image finding before export."
+      },
+      "ImageJobTransformRequest": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "finding_overrides": {
+            "items": {
+              "$ref": "#/components/schemas/ImageFindingOverride"
+            },
+            "type": "array",
+            "title": "Finding Overrides"
+          },
+          "include_pending": {
+            "type": "boolean",
+            "title": "Include Pending",
+            "default": false
+          },
+          "persist_output": {
+            "type": "boolean",
+            "title": "Persist Output",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "ImageJobTransformRequest",
+        "description": "Request to transform a persisted image job after review."
+      },
       "ImageWorkflowResponse": {
         "properties": {
           "job_id": {
@@ -3009,7 +3116,7 @@
           "include_pending": {
             "type": "boolean",
             "title": "Include Pending",
-            "default": true
+            "default": false
           },
           "default_transformation": {
             "anyOf": [

@@ -75,3 +75,29 @@ def test_stable_alias_workflow(client) -> None:
     body = response.json()
     assert body["output_text"] == "customer=CUSTOMER_1 customer=CUSTOMER_1 customer=CUSTOMER_2"
 
+
+def test_text_transform_requires_explicit_pending_opt_in(client) -> None:
+    analysis_response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "secret=alpha",
+            "exact_values": ["alpha"],
+            "persist_source_content": True,
+        },
+    )
+    assert analysis_response.status_code == 200
+    analysis = analysis_response.json()
+
+    default_transform_response = client.post(
+        "/api/v1/workflows/text/transform",
+        json={"job_id": analysis["job_id"]},
+    )
+    assert default_transform_response.status_code == 200
+    assert default_transform_response.json()["output_text"] == "secret=alpha"
+
+    pending_transform_response = client.post(
+        "/api/v1/workflows/text/transform",
+        json={"job_id": analysis["job_id"], "include_pending": True},
+    )
+    assert pending_transform_response.status_code == 200
+    assert pending_transform_response.json()["output_text"] == "secret=[REDACTED]"

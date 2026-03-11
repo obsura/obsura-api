@@ -165,7 +165,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
                 },
             }
         ],
-        "include_pending": True,
+        "include_pending": False,
         "persist_output": True,
     },
     ("POST", "/api/v1/workflows/text/analyze-transform"): {
@@ -179,6 +179,22 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             "alias_prefix": "CUSTOMER",
         },
         "persist_job": False,
+    },
+    ("POST", "/api/v1/workflows/images/transform-job"): {
+        "job_id": "{{jobId}}",
+        "finding_overrides": [
+            {
+                "finding_id": "{{findingId}}",
+                "decision": "approved",
+                "transformation": {
+                    "mode": "mask",
+                    "overlay_color": "#111111",
+                    "overlay_label": "REDACTED",
+                },
+            }
+        ],
+        "include_pending": False,
+        "persist_output": True,
     },
 }
 
@@ -307,6 +323,13 @@ REQUEST_EXTRACTORS: dict[tuple[str, str], list[dict[str, Any]]] = {
         {"variable": "findingIdsJson", "paths": [["findings", "__collect__", "id"]]},
     ],
     ("POST", "/api/v1/workflows/images/transform"): [
+        {"variable": "jobId", "paths": [["job_id"]]},
+        {"variable": "findingId", "paths": [["findings", 0, "id"]]},
+        {"variable": "findingIdsJson", "paths": [["findings", "__collect__", "id"]]},
+        {"variable": "outputFilePath", "paths": [["stored_output_path"]]},
+        {"variable": "outputMediaUrl", "paths": [["media_url"]]},
+    ],
+    ("POST", "/api/v1/workflows/images/transform-job"): [
         {"variable": "jobId", "paths": [["job_id"]]},
         {"variable": "findingId", "paths": [["findings", 0, "id"]]},
         {"variable": "findingIdsJson", "paths": [["findings", "__collect__", "id"]]},

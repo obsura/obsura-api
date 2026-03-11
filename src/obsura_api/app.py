@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -11,9 +13,11 @@ from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings, get_settings
 from obsura_api.db import models as _models  # noqa: F401
 from obsura_api.db.session import create_engine_from_settings, create_session_factory, initialize_database
-from obsura_api.services.providers.faces import NoOpFaceDetector
+from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import NoOpOCRProvider
 from obsura_api.services.storage import StorageService
+
+logger = logging.getLogger(__name__)
 
 OPENAPI_TAGS = [
     {
@@ -56,9 +60,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Create the FastAPI application and shared runtime container."""
 
     settings = settings or get_settings()
+    logger.info("Using %s database backend", settings.database_backend_summary)
     engine = create_engine_from_settings(settings)
     session_factory = create_session_factory(engine)
     storage = StorageService(settings)
+    face_detector = build_face_detector(settings)
+    logger.info("Using `%s` face detector backend", face_detector.name)
     if settings.auto_create_schema:
         initialize_database(engine)
 
@@ -89,7 +96,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session_factory=session_factory,
         storage=storage,
         ocr_provider=NoOpOCRProvider(),
-        face_detector=NoOpFaceDetector(),
+        face_detector=face_detector,
     )
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)

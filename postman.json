@@ -1846,7 +1846,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"semantic\",\n        \"semantic_label\": \"INTERNAL_DOMAIN\"\n      }\n    }\n  ],\n  \"include_pending\": true,\n  \"persist_output\": true\n}",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"semantic\",\n        \"semantic_label\": \"INTERNAL_DOMAIN\"\n      }\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2186,6 +2186,114 @@
                   "value": "{\n  \"title\": \"Screenshot safe-share export\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"API key panel\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"mask\",\n        \"overlay_color\": \"#111111\",\n        \"overlay_label\": \"REDACTED\"\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
                 }
               ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"stored_output_path\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputMediaUrl\",\n    \"paths\": [\n      [\n        \"media_url\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Image Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Image Job\n\nTransform a persisted image or screenshot job after review decisions are applied.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson, outputFilePath, outputMediaUrl.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/images/transform-job",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "images",
+                "transform-job"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"mask\",\n        \"overlay_color\": \"#111111\",\n        \"overlay_label\": \"REDACTED\"\n      }\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": [],

@@ -10,9 +10,16 @@ from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
 from obsura_api.db.models import Job, JobFinding, JobOutput
-from obsura_api.domain.enums import FindingKind, FindingSource, JobStatus, TransformationMode
+from obsura_api.domain.enums import ContentType, FindingKind, FindingSource, JobStatus, ReviewDecision, TransformationMode
 from obsura_api.domain.transforms import TransformationRule
-from obsura_api.domain.workflows import FindingRecord, ImageWorkflowManifest, ImageWorkflowResponse
+from obsura_api.domain.workflows import (
+    FindingRecord,
+    ImageFindingOverride,
+    ImageJobTransformRequest,
+    ImageWorkflowManifest,
+    ImageWorkflowResponse,
+)
+from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.storage import StorageService
 from obsura_api.services.studio import StudioService
@@ -97,6 +104,79 @@ class ImageWorkflowService:
             job_id=job_id,
             findings=findings,
             stored_input_path=stored_input_path,
+            stored_output_path=str(stored_output),
+            media_url=self.storage.media_url_for(stored_output),
+            summary=summarize_findings(findings),
+        )
+
+    def transform_job(self, request: ImageJobTransformRequest) -> ImageWorkflowResponse:
+        """Transform a persisted image job using reviewed findings."""
+
+        job = self.session.get(Job, request.job_id)
+        if job is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+        if job.content_type not in {ContentType.IMAGE, ContentType.SCREENSHOT}:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Only image and screenshot jobs can be transformed with this endpoint",
+            )
+        if not job.source_file_path:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Job does not retain a source image; resubmit the file to transform it",
+            )
+
+        stored_findings = {item.id: item for item in job.findings}
+        for override in request.finding_overrides:
+            self._apply_override(stored_findings, override)
+
+        try:
+            source_path = self.storage.resolve_stored_path(job.source_file_path)
+            file_bytes = source_path.read_bytes()
+        except FileNotFoundError as exc:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                detail="Stored source image was not found for this job",
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
+        image = Image.open(BytesIO(file_bytes)).convert("RGB")
+        findings = [finding_to_schema(item) for item in job.findings]
+        default_transformation = self._resolve_default_transformation(job.configuration_ids)
+        active_findings = self._active_findings(findings, request.include_pending)
+
+        for finding in active_findings:
+            if finding.region is None:
+                continue
+            rule = finding.transformation or default_transformation or TransformationRule(
+                mode=TransformationMode.MASK,
+            )
+            self._apply_region(image, finding, rule)
+
+        stored_output = self.storage.save_image(image, stem=f"{job.id}-reviewed")
+        if request.persist_output:
+            job.status = JobStatus.TRANSFORMED
+            job.summary = summarize_findings(findings)
+            output = JobOutput(
+                job_id=job.id,
+                content_type=job.content_type,
+                output_file_path=str(stored_output),
+                extra_data={
+                    "source_output": "reviewed-job-transform",
+                    "applied_finding_count": len(active_findings),
+                },
+            )
+            self.session.add(output)
+            self.session.commit()
+
+        return ImageWorkflowResponse(
+            job_id=job.id,
+            findings=findings,
+            stored_input_path=str(source_path),
             stored_output_path=str(stored_output),
             media_url=self.storage.media_url_for(stored_output),
             summary=summarize_findings(findings),
@@ -201,6 +281,37 @@ class ImageWorkflowService:
         label = rule.overlay_label or rule.placeholder or finding.entity_name
         if label:
             draw.text((left + 4, top + 4), label, fill="white")
+
+    def _apply_override(
+        self,
+        stored_findings: dict[str, JobFinding],
+        override: ImageFindingOverride,
+    ) -> None:
+        finding = stored_findings.get(override.finding_id)
+        if finding is None:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                detail=f"Finding {override.finding_id} not found",
+            )
+        if override.decision is not None:
+            finding.decision = override.decision
+        if override.transformation is not None:
+            finding.transformation = override.transformation.model_dump()
+
+    def _active_findings(
+        self,
+        findings: list[FindingRecord],
+        include_pending: bool,
+    ) -> list[FindingRecord]:
+        return [
+            item
+            for item in findings
+            if item.region is not None
+            and (
+                item.decision is ReviewDecision.APPROVED
+                or (include_pending and item.decision is ReviewDecision.PENDING)
+            )
+        ]
 
     def _persist_job(
         self,

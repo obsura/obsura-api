@@ -23,3 +23,10 @@ def test_postman_collection_uses_chained_variables() -> None:
     )
     assert "{{patternId}}" in create_configuration_request["request"]["body"]["raw"]
     assert "{{entityId}}" in create_configuration_request["request"]["body"]["raw"]
+
+    image_folder = next(item for item in collection["item"] if item["name"] == "Image Workflows")
+    transform_job_request = next(
+        item for item in image_folder["item"] if item["name"] == "Transform Image Job"
+    )
+    assert "{{jobId}}" in transform_job_request["request"]["body"]["raw"]
+    assert "{{findingId}}" in transform_job_request["request"]["body"]["raw"]

@@ -86,7 +86,7 @@ class TextTransformRequest(BaseModel):
     content: str | None = None
     job_id: str | None = None
     finding_overrides: list[FindingOverride] = Field(default_factory=list)
-    include_pending: bool = True
+    include_pending: bool = False
     default_transformation: TransformationRule | None = None
     persist_output: bool = True
 
@@ -150,3 +150,19 @@ class ImageWorkflowResponse(BaseModel):
     media_url: str | None = None
     summary: dict[str, int]
 
+
+class ImageFindingOverride(BaseModel):
+    """Override a stored image finding before export."""
+
+    finding_id: str
+    decision: ReviewDecision | None = None
+    transformation: TransformationRule | None = None
+
+
+class ImageJobTransformRequest(BaseModel):
+    """Request to transform a persisted image job after review."""
+
+    job_id: str
+    finding_overrides: list[ImageFindingOverride] = Field(default_factory=list)
+    include_pending: bool = False
+    persist_output: bool = True

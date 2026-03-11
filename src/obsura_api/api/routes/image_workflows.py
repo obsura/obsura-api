@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from obsura_api.api.dependencies import get_container, get_db_session, get_settings
 from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings
-from obsura_api.domain.workflows import ImageWorkflowManifest, ImageWorkflowResponse
+from obsura_api.domain.workflows import (
+    ImageJobTransformRequest,
+    ImageWorkflowManifest,
+    ImageWorkflowResponse,
+)
 from obsura_api.services.image_workflows import ImageWorkflowService
 
 router = APIRouter(prefix="/workflows/images", tags=["image-workflows"])
@@ -65,3 +69,21 @@ async def transform_image(
         filename=file.filename or "upload.bin",
         manifest=manifest,
     )
+
+
+@router.post("/transform-job", response_model=ImageWorkflowResponse)
+def transform_image_job(
+    payload: ImageJobTransformRequest,
+    session: SessionDep,
+    settings: SettingsDep,
+    container: ContainerDep,
+) -> ImageWorkflowResponse:
+    """Transform a persisted image or screenshot job after review decisions are applied."""
+
+    service = ImageWorkflowService(
+        session=session,
+        settings=settings,
+        storage=container.storage,
+        face_detector=container.face_detector,
+    )
+    return service.transform_job(payload)
