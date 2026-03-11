@@ -1,0 +1,2263 @@
+{
+  "info": {
+    "name": "Obsura API",
+    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text or image workflow requests in order without manually copying IDs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "obsura-api-collection"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "searchQuery",
+      "value": "infra",
+      "type": "string"
+    },
+    {
+      "key": "patternId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "entityId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "configurationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "findingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "patternIdsJson",
+      "value": "[]",
+      "type": "string"
+    },
+    {
+      "key": "entityIdsJson",
+      "value": "[]",
+      "type": "string"
+    },
+    {
+      "key": "configurationIdsJson",
+      "value": "[]",
+      "type": "string"
+    },
+    {
+      "key": "jobIdsJson",
+      "value": "[]",
+      "type": "string"
+    },
+    {
+      "key": "findingIdsJson",
+      "value": "[]",
+      "type": "string"
+    },
+    {
+      "key": "outputFilePath",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "outputMediaUrl",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "description": "Service health and platform metadata endpoints.",
+      "item": [
+        {
+          "name": "Healthcheck",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Healthcheck\n\nSimple liveness response.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Studio",
+      "description": "Persistent studio assets such as patterns, custom entities, reusable packs, profiles, and presets.",
+      "item": [
+        {
+          "name": "List Patterns",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Patterns\n\nList saved patterns in reverse creation order.\n\nCollection helpers:\n- Automatically updates collection variables: patternId, patternIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/patterns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "patterns"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"patternIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Pattern",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create Pattern\n\nCreate a reusable detection pattern with an optional default transformation.\n\nCollection helpers:\n- Automatically updates collection variables: patternId.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/patterns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "patterns"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Infrastructure Domain Pattern\",\n  \"description\": \"Protect an internal domain across text workflows.\",\n  \"category\": \"infrastructure\",\n  \"tags\": [\n    \"ops\",\n    \"safe-share\"\n  ],\n  \"is_active\": true,\n  \"matcher\": {\n    \"kind\": \"exact\",\n    \"value\": \"internal.example.com\",\n    \"case_sensitive\": false,\n    \"applies_to\": [\n      \"text\",\n      \"structured_text\"\n    ]\n  },\n  \"transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"INTERNAL_DOMAIN\"\n  },\n  \"scope\": {\n    \"workspace\": \"default\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Pattern",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Get Pattern\n\nFetch one saved pattern by identifier.\n\nCollection helpers:\n- Automatically updates collection variables: patternId.\n- Uses the `patternId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/patterns/{{patternId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "patterns",
+                "{{patternId}}"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Pattern",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update Pattern\n\nUpdate part of a saved pattern without replacing the whole record.\n\nCollection helpers:\n- Automatically updates collection variables: patternId.\n- Uses the `patternId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/patterns/{{patternId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "patterns",
+                "{{patternId}}"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description for the saved pattern.\",\n  \"tags\": [\n    \"ops\",\n    \"reviewed\"\n  ],\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"patternId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Pattern From Selection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create Pattern From Selection\n\nCreate an exact-value pattern directly from a selected value.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/patterns/from-selection",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "patterns",
+                "from-selection"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Selected Internal Hostname\",\n  \"selected_value\": \"vps-prod-01.internal\",\n  \"description\": \"Created from a manual selection in a screenshot or pasted text.\",\n  \"category\": \"hosts\",\n  \"tags\": [\n    \"selection\",\n    \"ops\"\n  ],\n  \"transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"PRIVATE_HOST\"\n  },\n  \"applies_to\": [\n    \"text\",\n    \"structured_text\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Custom Entities",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Custom Entities\n\nList saved custom entities.\n\nCollection helpers:\n- Automatically updates collection variables: entityId, entityIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/entities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "entities"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"entityIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Custom Entity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create Custom Entity\n\nCreate a reusable custom entity with one or more detection definitions.\n\nCollection helpers:\n- Automatically updates collection variables: entityId.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/entities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "entities"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Customer Names\",\n  \"description\": \"Protect known customer names with a stable alias.\",\n  \"category\": \"customers\",\n  \"tags\": [\n    \"crm\"\n  ],\n  \"is_active\": true,\n  \"detection_definitions\": [\n    {\n      \"kind\": \"value_list\",\n      \"values\": [\n        \"Acme Corp\",\n        \"Globex\"\n      ],\n      \"case_sensitive\": false,\n      \"applies_to\": [\n        \"text\",\n        \"structured_text\"\n      ]\n    }\n  ],\n  \"transformation\": {\n    \"mode\": \"stable_alias\",\n    \"alias_prefix\": \"CUSTOMER\"\n  },\n  \"scope\": {\n    \"workspace\": \"default\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Custom Entity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Get Custom Entity\n\nFetch one saved custom entity by identifier.\n\nCollection helpers:\n- Automatically updates collection variables: entityId.\n- Uses the `entityId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/entities/{{entityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "entities",
+                "{{entityId}}"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Custom Entity",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update Custom Entity\n\nUpdate part of a saved custom entity.\n\nCollection helpers:\n- Automatically updates collection variables: entityId.\n- Uses the `entityId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/entities/{{entityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "entities",
+                "{{entityId}}"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated custom entity description.\",\n  \"tags\": [\n    \"crm\",\n    \"reviewed\"\n  ],\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"entityId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Configurations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Configurations\n\nList saved packs, profiles, and presets.\n\nCollection helpers:\n- Automatically updates collection variables: configurationId, configurationIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/configurations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "configurations"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"configurationIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Configuration",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Create Configuration\n\nCreate a reusable pack, profile, or preset.\n\nCollection helpers:\n- Automatically updates collection variables: configurationId.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/configurations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "configurations"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"pack\",\n  \"name\": \"Infrastructure Safe-Share Pack\",\n  \"description\": \"Reusable pack for terminal text, logs, and VPS screenshots.\",\n  \"category\": \"infrastructure\",\n  \"tags\": [\n    \"ops\",\n    \"preset\"\n  ],\n  \"is_active\": true,\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"default_text_transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"SENSITIVE_VALUE\"\n  },\n  \"default_image_transformation\": {\n    \"mode\": \"blur\",\n    \"blur_radius\": 10\n  },\n  \"face_preferences\": {\n    \"mode\": \"blur\",\n    \"blur_radius\": 12\n  },\n  \"metadata\": {\n    \"team\": \"platform\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Configuration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Get Configuration\n\nFetch one saved configuration asset by identifier.\n\nCollection helpers:\n- Automatically updates collection variables: configurationId.\n- Uses the `configurationId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/configurations/{{configurationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "configurations",
+                "{{configurationId}}"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Configuration",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Update Configuration\n\nUpdate part of a saved configuration asset.\n\nCollection helpers:\n- Automatically updates collection variables: configurationId.\n- Uses the `configurationId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/configurations/{{configurationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "configurations",
+                "{{configurationId}}"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated preset description.\",\n  \"tags\": [\n    \"ops\",\n    \"updated\"\n  ],\n  \"metadata\": {\n    \"team\": \"platform\",\n    \"status\": \"reviewed\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"configurationId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Studio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Search Studio\n\nSearch across saved studio assets and persisted jobs.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/studio/search?q={{searchQuery}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "studio",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{searchQuery}}",
+                  "description": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "description": "Review history, job inspection, and review-decision updates.",
+      "item": [
+        {
+          "name": "List Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Jobs\n\nList persisted jobs with findings and generated outputs.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, jobIdsJson, findingId, outputFilePath.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobIdsJson\",\n    \"paths\": [\n      [\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        0,\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        0,\n        \"outputs\",\n        0,\n        \"output_file_path\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Job",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Get Job\n\nFetch one persisted job by identifier.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson, outputFilePath.\n- Uses the `jobId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "{{jobId}}"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"outputs\",\n        0,\n        \"output_file_path\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Review Job\n\nApply review decisions to findings within a persisted job.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.\n- Uses the `jobId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/{{jobId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "{{jobId}}",
+                "review"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decisions\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"semantic\",\n        \"semantic_label\": \"INTERNAL_DOMAIN\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Text Workflows",
+      "description": "Review-first text detection and transformation workflows for pasted text, logs, and structured technical content.",
+      "item": [
+        {
+          "name": "Analyze Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Analyze Text\n\nAnalyze text-like content into reviewable findings and optionally persist a job.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/text/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "text",
+                "analyze"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Terminal safe-share review\",\n  \"content\": \"Connect to https://internal.example.com from 10.0.0.1 as root\",\n  \"content_type\": \"text\",\n  \"apply_builtins\": true,\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"exact_values\": [\n    \"root\"\n  ],\n  \"manual_spans\": [],\n  \"default_transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"SENSITIVE_VALUE\"\n  },\n  \"persist_job\": true,\n  \"persist_source_content\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Text\n\nTransform a persisted text job after review decisions and overrides are applied.\n\nCollection helpers:\n- Automatically updates collection variables: jobId.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/text/transform",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "text",
+                "transform"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"semantic\",\n        \"semantic_label\": \"INTERNAL_DOMAIN\"\n      }\n    }\n  ],\n  \"include_pending\": true,\n  \"persist_output\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Analyze And Transform Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Analyze And Transform Text\n\nRun a one-shot analyze-plus-transform flow while still producing reviewable findings.\n\nCollection helpers:\n- Automatically updates collection variables: jobId.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/text/analyze-transform",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "text",
+                "analyze-transform"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"One-shot alias workflow\",\n  \"content\": \"customer=acme customer=acme customer=globex\",\n  \"content_type\": \"text\",\n  \"apply_builtins\": false,\n  \"exact_values\": [\n    \"acme\",\n    \"globex\"\n  ],\n  \"default_transformation\": {\n    \"mode\": \"stable_alias\",\n    \"alias_prefix\": \"CUSTOMER\"\n  },\n  \"persist_job\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Image Workflows",
+      "description": "Screenshot and image-region workflows for manual regions, face-protection flows, and generated outputs.",
+      "item": [
+        {
+          "name": "Analyze Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Analyze Image\n\nAnalyze an uploaded image or screenshot into reviewable regions.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/images/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "images",
+                "analyze"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "manifest_json",
+                  "type": "text",
+                  "value": "{\n  \"title\": \"Screenshot region review\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"Secret block\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"blur\",\n        \"blur_radius\": 10\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Image\n\nApply image-region transformations and persist the generated output.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson, outputFilePath, outputMediaUrl.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/images/transform",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "images",
+                "transform"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "manifest_json",
+                  "type": "text",
+                  "value": "{\n  \"title\": \"Screenshot safe-share export\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"API key panel\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"mask\",\n        \"overlay_color\": \"#111111\",\n        \"overlay_label\": \"REDACTED\"\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputFilePath\",\n    \"paths\": [\n      [\n        \"stored_output_path\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"outputMediaUrl\",\n    \"paths\": [\n      [\n        \"media_url\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

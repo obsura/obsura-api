@@ -1,0 +1,93 @@
+"""Search service across saved assets and jobs."""
+
+from __future__ import annotations
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from obsura_api.db.models import CustomEntity, Job, Pattern, StudioConfiguration
+from obsura_api.domain.common import SearchResultItem
+from obsura_api.domain.enums import SearchResultKind
+
+
+class SearchService:
+    """Search persistent saved assets and job history."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def search(self, query: str) -> list[SearchResultItem]:
+        normalized = f"%{query.lower()}%"
+        results: list[SearchResultItem] = []
+
+        patterns = self.session.scalars(
+            select(Pattern).where(
+                func.lower(Pattern.name).like(normalized)
+                | func.lower(func.coalesce(Pattern.description, "")).like(normalized),
+            ),
+        ).all()
+        results.extend(
+            SearchResultItem(
+                kind=SearchResultKind.PATTERN,
+                id=item.id,
+                name=item.name,
+                description=item.description,
+                category=item.category,
+                tags=item.tags,
+            )
+            for item in patterns
+        )
+
+        entities = self.session.scalars(
+            select(CustomEntity).where(
+                func.lower(CustomEntity.name).like(normalized)
+                | func.lower(func.coalesce(CustomEntity.description, "")).like(normalized),
+            ),
+        ).all()
+        results.extend(
+            SearchResultItem(
+                kind=SearchResultKind.CUSTOM_ENTITY,
+                id=item.id,
+                name=item.name,
+                description=item.description,
+                category=item.category,
+                tags=item.tags,
+            )
+            for item in entities
+        )
+
+        configurations = self.session.scalars(
+            select(StudioConfiguration).where(
+                func.lower(StudioConfiguration.name).like(normalized)
+                | func.lower(func.coalesce(StudioConfiguration.description, "")).like(normalized),
+            ),
+        ).all()
+        results.extend(
+            SearchResultItem(
+                kind=SearchResultKind.CONFIGURATION,
+                id=item.id,
+                name=item.name,
+                description=item.description,
+                category=item.category,
+                tags=item.tags,
+            )
+            for item in configurations
+        )
+
+        jobs = self.session.scalars(
+            select(Job).where(func.lower(func.coalesce(Job.title, "")).like(normalized)),
+        ).all()
+        results.extend(
+            SearchResultItem(
+                kind=SearchResultKind.JOB,
+                id=item.id,
+                name=item.title or item.id,
+                description=f"{item.content_type.value} job",
+                category="job",
+                tags=[],
+            )
+            for item in jobs
+        )
+
+        return results
+

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "obsura-api"
+version = "0.1.0"
+description = "Obsura API for review-first sanitization workflows, studio assets, and job orchestration."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.116.1",
+  "pillow>=11.2.1",
+  "pydantic-settings>=2.8.1",
+  "python-multipart>=0.0.20",
+  "sqlalchemy>=2.0.39",
+  "uvicorn>=0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28.1",
+  "pytest>=8.3.5",
+]
+
+[project.scripts]
+obsura-api = "obsura_api.main:main"
+obsura-api-artifacts = "obsura_api.tools.api_artifacts:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/obsura_api"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

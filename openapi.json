@@ -1,0 +1,3244 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Obsura API",
+    "summary": "Review-first sanitization workflows, studio assets, and job orchestration for Obsura.",
+    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- reviewable jobs and run history\n- text-first and screenshot-first sanitization workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
+    "contact": {
+      "name": "Obsura",
+      "url": "https://github.com/obsura"
+    },
+    "license": {
+      "name": "AGPL-3.0-or-later"
+    },
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Healthcheck",
+        "description": "Simple liveness response.",
+        "operationId": "healthcheck_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Healthcheck Api V1 Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/patterns": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "List Patterns",
+        "description": "List saved patterns in reverse creation order.",
+        "operationId": "list_patterns_api_v1_studio_patterns_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PatternRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Patterns Api V1 Studio Patterns Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Create Pattern",
+        "description": "Create a reusable detection pattern with an optional default transformation.",
+        "operationId": "create_pattern_api_v1_studio_patterns_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatternCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/patterns/{pattern_id}": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Pattern",
+        "description": "Fetch one saved pattern by identifier.",
+        "operationId": "get_pattern_api_v1_studio_patterns__pattern_id__get",
+        "parameters": [
+          {
+            "name": "pattern_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pattern Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Update Pattern",
+        "description": "Update part of a saved pattern without replacing the whole record.",
+        "operationId": "update_pattern_api_v1_studio_patterns__pattern_id__patch",
+        "parameters": [
+          {
+            "name": "pattern_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pattern Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatternUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/patterns/from-selection": {
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Create Pattern From Selection",
+        "description": "Create an exact-value pattern directly from a selected value.",
+        "operationId": "create_pattern_from_selection_api_v1_studio_patterns_from_selection_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatternFromSelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatternRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/entities": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "List Custom Entities",
+        "description": "List saved custom entities.",
+        "operationId": "list_custom_entities_api_v1_studio_entities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CustomEntityRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Custom Entities Api V1 Studio Entities Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Create Custom Entity",
+        "description": "Create a reusable custom entity with one or more detection definitions.",
+        "operationId": "create_custom_entity_api_v1_studio_entities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomEntityCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomEntityRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/entities/{entity_id}": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Custom Entity",
+        "description": "Fetch one saved custom entity by identifier.",
+        "operationId": "get_custom_entity_api_v1_studio_entities__entity_id__get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomEntityRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Update Custom Entity",
+        "description": "Update part of a saved custom entity.",
+        "operationId": "update_custom_entity_api_v1_studio_entities__entity_id__patch",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomEntityUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomEntityRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/configurations": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "List Configurations",
+        "description": "List saved packs, profiles, and presets.",
+        "operationId": "list_configurations_api_v1_studio_configurations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigurationRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Configurations Api V1 Studio Configurations Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Create Configuration",
+        "description": "Create a reusable pack, profile, or preset.",
+        "operationId": "create_configuration_api_v1_studio_configurations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/configurations/{configuration_id}": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Get Configuration",
+        "description": "Fetch one saved configuration asset by identifier.",
+        "operationId": "get_configuration_api_v1_studio_configurations__configuration_id__get",
+        "parameters": [
+          {
+            "name": "configuration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Configuration Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Update Configuration",
+        "description": "Update part of a saved configuration asset.",
+        "operationId": "update_configuration_api_v1_studio_configurations__configuration_id__patch",
+        "parameters": [
+          {
+            "name": "configuration_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Configuration Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigurationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigurationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/studio/search": {
+      "get": {
+        "tags": [
+          "studio"
+        ],
+        "summary": "Search Studio",
+        "description": "Search across saved studio assets and persisted jobs.",
+        "operationId": "search_studio_api_v1_studio_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SearchResultItem"
+                  },
+                  "title": "Response Search Studio Api V1 Studio Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List Jobs",
+        "description": "List persisted jobs with findings and generated outputs.",
+        "operationId": "list_jobs_api_v1_jobs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Jobs Api V1 Jobs Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job",
+        "description": "Fetch one persisted job by identifier.",
+        "operationId": "get_job_api_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}/review": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Review Job",
+        "description": "Apply review decisions to findings within a persisted job.",
+        "operationId": "review_job_api_v1_jobs__job_id__review_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/text/analyze": {
+      "post": {
+        "tags": [
+          "text-workflows"
+        ],
+        "summary": "Analyze Text",
+        "description": "Analyze text-like content into reviewable findings and optionally persist a job.",
+        "operationId": "analyze_text_api_v1_workflows_text_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/text/transform": {
+      "post": {
+        "tags": [
+          "text-workflows"
+        ],
+        "summary": "Transform Text",
+        "description": "Transform a persisted text job after review decisions and overrides are applied.",
+        "operationId": "transform_text_api_v1_workflows_text_transform_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextTransformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextTransformResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/text/analyze-transform": {
+      "post": {
+        "tags": [
+          "text-workflows"
+        ],
+        "summary": "Analyze And Transform Text",
+        "description": "Run a one-shot analyze-plus-transform flow while still producing reviewable findings.",
+        "operationId": "analyze_and_transform_text_api_v1_workflows_text_analyze_transform_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextTransformResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/images/analyze": {
+      "post": {
+        "tags": [
+          "image-workflows"
+        ],
+        "summary": "Analyze Image",
+        "description": "Analyze an uploaded image or screenshot into reviewable regions.",
+        "operationId": "analyze_image_api_v1_workflows_images_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_image_api_v1_workflows_images_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageWorkflowResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/images/transform": {
+      "post": {
+        "tags": [
+          "image-workflows"
+        ],
+        "summary": "Transform Image",
+        "description": "Apply image-region transformations and persist the generated output.",
+        "operationId": "transform_image_api_v1_workflows_images_transform_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transform_image_api_v1_workflows_images_transform_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageWorkflowResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_analyze_image_api_v1_workflows_images_analyze_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_analyze_image_api_v1_workflows_images_analyze_post"
+      },
+      "Body_transform_image_api_v1_workflows_images_transform_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_transform_image_api_v1_workflows_images_transform_post"
+      },
+      "BoundingBox": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X"
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Y"
+          },
+          "width": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Width"
+          },
+          "height": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Height"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "title": "BoundingBox",
+        "description": "A region on an image or screenshot."
+      },
+      "ConfigurationCreate": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ConfigurationKind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "pattern_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Custom Entity Ids"
+          },
+          "default_text_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_image_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "face_preferences": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Face Preferences"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "name"
+        ],
+        "title": "ConfigurationCreate",
+        "description": "Payload for creating a configuration asset."
+      },
+      "ConfigurationKind": {
+        "type": "string",
+        "enum": [
+          "pack",
+          "profile",
+          "preset"
+        ],
+        "title": "ConfigurationKind"
+      },
+      "ConfigurationRead": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/ConfigurationKind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "pattern_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Custom Entity Ids"
+          },
+          "default_text_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_image_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "face_preferences": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Face Preferences"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "name",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ConfigurationRead",
+        "description": "Stored pack, profile, or preset."
+      },
+      "ConfigurationUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "pattern_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Entity Ids"
+          },
+          "default_text_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_image_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "face_preferences": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Face Preferences"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "ConfigurationUpdate",
+        "description": "Partial update for a configuration asset."
+      },
+      "ContentType": {
+        "type": "string",
+        "enum": [
+          "text",
+          "structured_text",
+          "screenshot",
+          "image"
+        ],
+        "title": "ContentType"
+      },
+      "CustomEntityCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "detection_definitions": {
+            "items": {
+              "$ref": "#/components/schemas/PatternMatcherDefinition"
+            },
+            "type": "array",
+            "title": "Detection Definitions"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "CustomEntityCreate",
+        "description": "Payload for creating a custom entity."
+      },
+      "CustomEntityRead": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "detection_definitions": {
+            "items": {
+              "$ref": "#/components/schemas/PatternMatcherDefinition"
+            },
+            "type": "array",
+            "title": "Detection Definitions"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Scope"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CustomEntityRead",
+        "description": "Stored custom entity representation."
+      },
+      "CustomEntityUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "detection_definitions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PatternMatcherDefinition"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detection Definitions"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "type": "object",
+        "title": "CustomEntityUpdate",
+        "description": "Partial update for a custom entity."
+      },
+      "FindingKind": {
+        "type": "string",
+        "enum": [
+          "text_span",
+          "image_region",
+          "face_region",
+          "face_subregion"
+        ],
+        "title": "FindingKind"
+      },
+      "FindingOverride": {
+        "properties": {
+          "finding_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finding Id"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Index"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Index"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewDecision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "FindingOverride",
+        "description": "Override a stored or transient finding before transformation."
+      },
+      "FindingRecord": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FindingSource"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/FindingKind"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Name"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Index"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Index"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoundingBox"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matched_text_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Text Preview"
+          },
+          "matched_text_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Text Hash"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "default": 1.0
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ReviewDecision",
+            "default": "pending"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "kind",
+          "entity_type"
+        ],
+        "title": "FindingRecord",
+        "description": "Reviewable finding for text or image workflows."
+      },
+      "FindingSource": {
+        "type": "string",
+        "enum": [
+          "built_in",
+          "custom",
+          "manual",
+          "face",
+          "ocr"
+        ],
+        "title": "FindingSource"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImageWorkflowResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRecord"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "stored_input_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stored Input Path"
+          },
+          "stored_output_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stored Output Path"
+          },
+          "media_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Url"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings",
+          "summary"
+        ],
+        "title": "ImageWorkflowResponse",
+        "description": "Response for image analysis or transformation."
+      },
+      "JobOutputRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "output_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Text"
+          },
+          "output_file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output File Path"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "updated_at",
+          "job_id",
+          "content_type"
+        ],
+        "title": "JobOutputRecord",
+        "description": "A stored output generated from a job."
+      },
+      "JobRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "source_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Text"
+          },
+          "source_file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source File Path"
+          },
+          "pattern_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Custom Entity Ids"
+          },
+          "configuration_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Configuration Ids"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRecord"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "outputs": {
+            "items": {
+              "$ref": "#/components/schemas/JobOutputRecord"
+            },
+            "type": "array",
+            "title": "Outputs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "updated_at",
+          "status",
+          "content_type"
+        ],
+        "title": "JobRead",
+        "description": "Full stored job representation."
+      },
+      "JobReviewDecisionInput": {
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "title": "Finding Id"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ReviewDecision"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "finding_id",
+          "decision"
+        ],
+        "title": "JobReviewDecisionInput",
+        "description": "Review decision for a single finding."
+      },
+      "JobReviewRequest": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/JobReviewDecisionInput"
+            },
+            "type": "array",
+            "title": "Decisions"
+          }
+        },
+        "type": "object",
+        "title": "JobReviewRequest",
+        "description": "Batch review update for stored findings."
+      },
+      "JobStatus": {
+        "type": "string",
+        "enum": [
+          "analyzed",
+          "reviewed",
+          "transformed"
+        ],
+        "title": "JobStatus"
+      },
+      "ManualTextSpan": {
+        "properties": {
+          "start_index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start Index"
+          },
+          "end_index": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "End Index"
+          },
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type",
+            "default": "MANUAL_SELECTION"
+          },
+          "entity_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Name"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_index",
+          "end_index"
+        ],
+        "title": "ManualTextSpan",
+        "description": "A manually selected range in text."
+      },
+      "MatcherKind": {
+        "type": "string",
+        "enum": [
+          "exact",
+          "regex",
+          "value_list"
+        ],
+        "title": "MatcherKind"
+      },
+      "PatternCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "matcher": {
+            "$ref": "#/components/schemas/PatternMatcherDefinition"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Scope"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "matcher"
+        ],
+        "title": "PatternCreate",
+        "description": "Payload for creating a pattern."
+      },
+      "PatternFromSelectionRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "selected_value": {
+            "type": "string",
+            "title": "Selected Value"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applies_to": {
+            "items": {
+              "$ref": "#/components/schemas/ContentType"
+            },
+            "type": "array",
+            "title": "Applies To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "selected_value"
+        ],
+        "title": "PatternFromSelectionRequest",
+        "description": "Create a reusable pattern from a selected exact value."
+      },
+      "PatternMatcherDefinition": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/MatcherKind"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Values"
+          },
+          "case_sensitive": {
+            "type": "boolean",
+            "title": "Case Sensitive",
+            "default": false
+          },
+          "applies_to": {
+            "items": {
+              "$ref": "#/components/schemas/ContentType"
+            },
+            "type": "array",
+            "title": "Applies To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "PatternMatcherDefinition",
+        "description": "One custom detection rule."
+      },
+      "PatternRead": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "matcher": {
+            "$ref": "#/components/schemas/PatternMatcherDefinition"
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Scope"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "matcher",
+          "id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "PatternRead",
+        "description": "Stored pattern representation."
+      },
+      "PatternUpdate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "matcher": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PatternMatcherDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "type": "object",
+        "title": "PatternUpdate",
+        "description": "Partial update for a pattern."
+      },
+      "ReplacementRecord": {
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Index"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Index"
+          },
+          "original_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Preview"
+          },
+          "output_value": {
+            "type": "string",
+            "title": "Output Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_type",
+          "output_value"
+        ],
+        "title": "ReplacementRecord",
+        "description": "One applied replacement in a transformed output."
+      },
+      "ReviewDecision": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected"
+        ],
+        "title": "ReviewDecision"
+      },
+      "SearchResultItem": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/SearchResultKind"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "name"
+        ],
+        "title": "SearchResultItem",
+        "description": "Unified search result returned across saved assets and jobs."
+      },
+      "SearchResultKind": {
+        "type": "string",
+        "enum": [
+          "pattern",
+          "custom_entity",
+          "configuration",
+          "job"
+        ],
+        "title": "SearchResultKind"
+      },
+      "TextAnalysisRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "text"
+          },
+          "apply_builtins": {
+            "type": "boolean",
+            "title": "Apply Builtins",
+            "default": true
+          },
+          "pattern_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Custom Entity Ids"
+          },
+          "configuration_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Configuration Ids"
+          },
+          "exact_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exact Values"
+          },
+          "manual_spans": {
+            "items": {
+              "$ref": "#/components/schemas/ManualTextSpan"
+            },
+            "type": "array",
+            "title": "Manual Spans"
+          },
+          "default_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persist_job": {
+            "type": "boolean",
+            "title": "Persist Job",
+            "default": true
+          },
+          "persist_source_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persist Source Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "TextAnalysisRequest",
+        "description": "Request to detect findings in text-like content."
+      },
+      "TextAnalysisResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRecord"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings",
+          "summary"
+        ],
+        "title": "TextAnalysisResponse",
+        "description": "Detection result for text workflows."
+      },
+      "TextTransformRequest": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "finding_overrides": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOverride"
+            },
+            "type": "array",
+            "title": "Finding Overrides"
+          },
+          "include_pending": {
+            "type": "boolean",
+            "title": "Include Pending",
+            "default": true
+          },
+          "default_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persist_output": {
+            "type": "boolean",
+            "title": "Persist Output",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "TextTransformRequest",
+        "description": "Request to transform text from findings."
+      },
+      "TextTransformResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "output_text": {
+            "type": "string",
+            "title": "Output Text"
+          },
+          "replacements": {
+            "items": {
+              "$ref": "#/components/schemas/ReplacementRecord"
+            },
+            "type": "array",
+            "title": "Replacements"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "output_text",
+          "replacements",
+          "summary"
+        ],
+        "title": "TextTransformResponse",
+        "description": "Transformation result for text content."
+      },
+      "TransformationMode": {
+        "type": "string",
+        "enum": [
+          "generic",
+          "semantic",
+          "custom",
+          "partial_mask",
+          "stable_alias",
+          "mask",
+          "blur",
+          "pixelate",
+          "overlay",
+          "image_replacement"
+        ],
+        "title": "TransformationMode"
+      },
+      "TransformationRule": {
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/TransformationMode",
+            "default": "generic"
+          },
+          "placeholder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder"
+          },
+          "semantic_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semantic Label"
+          },
+          "alias_prefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias Prefix"
+          },
+          "prefix_visible": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Prefix Visible",
+            "default": 0
+          },
+          "suffix_visible": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Suffix Visible",
+            "default": 0
+          },
+          "mask_character": {
+            "type": "string",
+            "title": "Mask Character",
+            "default": "*"
+          },
+          "blur_radius": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Blur Radius",
+            "default": 8
+          },
+          "pixelation_scale": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Pixelation Scale",
+            "default": 8
+          },
+          "overlay_color": {
+            "type": "string",
+            "title": "Overlay Color",
+            "default": "#111111"
+          },
+          "overlay_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overlay Label"
+          }
+        },
+        "type": "object",
+        "title": "TransformationRule",
+        "description": "How a finding should be transformed for output."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "health",
+      "description": "Service health and platform metadata endpoints."
+    },
+    {
+      "name": "studio",
+      "description": "Persistent studio assets such as patterns, custom entities, reusable packs, profiles, and presets."
+    },
+    {
+      "name": "jobs",
+      "description": "Review history, job inspection, and review-decision updates."
+    },
+    {
+      "name": "text-workflows",
+      "description": "Review-first text detection and transformation workflows for pasted text, logs, and structured technical content."
+    },
+    {
+      "name": "image-workflows",
+      "description": "Screenshot and image-region workflows for manual regions, face-protection flows, and generated outputs."
+    }
+  ]
+}
