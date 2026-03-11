@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from obsura_api.api.dependencies import get_db_session, get_pagination_params
+from obsura_api.api.dependencies import get_container, get_db_session, get_pagination_params
 from obsura_api.api.responses import success_response
+from obsura_api.core.container import AppContainer
 from obsura_api.domain.common import ApiResponse, PaginationParams
 from obsura_api.domain.jobs import JobRead, JobReviewRequest
 from obsura_api.services.jobs import JobService
@@ -16,32 +18,35 @@ from obsura_api.services.jobs import JobService
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 SessionDep = Annotated[Session, Depends(get_db_session)]
 PaginationDep = Annotated[PaginationParams, Depends(get_pagination_params)]
+ContainerDep = Annotated[AppContainer, Depends(get_container)]
 
 
 @router.get("", response_model=ApiResponse[list[JobRead]])
 def list_jobs(
     session: SessionDep,
     pagination: PaginationDep,
+    container: ContainerDep,
 ) -> ApiResponse[list[JobRead]]:
     """List persisted jobs with findings and generated outputs."""
 
-    items, pagination_meta = JobService(session).list_jobs(pagination)
+    items, pagination_meta = JobService(session, storage=container.storage).list_jobs(pagination)
     return success_response(items, pagination=pagination_meta)
 
 
 @router.get("/{job_id}", response_model=ApiResponse[JobRead])
-def get_job(job_id: str, session: SessionDep) -> ApiResponse[JobRead]:
+def get_job(job_id: UUID, session: SessionDep, container: ContainerDep) -> ApiResponse[JobRead]:
     """Fetch one persisted job by identifier."""
 
-    return success_response(JobService(session).get_job(job_id))
+    return success_response(JobService(session, storage=container.storage).get_job(str(job_id)))
 
 
 @router.post("/{job_id}/review", response_model=ApiResponse[JobRead])
 def review_job(
-    job_id: str,
+    job_id: UUID,
     payload: JobReviewRequest,
     session: SessionDep,
+    container: ContainerDep,
 ) -> ApiResponse[JobRead]:
     """Apply review decisions to findings within a persisted job."""
 
-    return success_response(JobService(session).review_job(job_id, payload))
+    return success_response(JobService(session, storage=container.storage).review_job(str(job_id), payload))

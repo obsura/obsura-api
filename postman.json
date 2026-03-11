@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Obsura API",
-    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text or image workflow requests in order without manually copying IDs.",
+    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text or image workflow requests in order without manually copying IDs.\n5. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "obsura-api-collection"
   },
@@ -14,6 +14,16 @@
     {
       "key": "searchQuery",
       "value": "infra",
+      "type": "string"
+    },
+    {
+      "key": "page",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "page_size",
+      "value": "20",
       "type": "string"
     },
     {
@@ -102,6 +112,58 @@
                 "api",
                 "v1",
                 "health"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Readiness\n\nDependency-aware readiness response.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ready"
+              ],
+              "query": []
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Version",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Version\n\nReturn service version and runtime metadata.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/version",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "version"
               ],
               "query": []
             }
@@ -2127,7 +2189,7 @@
                 {
                   "key": "manifest_json",
                   "type": "text",
-                  "value": "{\n  \"title\": \"Screenshot region review\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"Secret block\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"blur\",\n        \"blur_radius\": 10\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
+                  "value": "{\n  \"title\": \"Screenshot region review\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"apply_builtins\": true,\n  \"detect_text\": true,\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"Secret block\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"blur\",\n        \"blur_radius\": 10\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
                 }
               ]
             }
@@ -2237,7 +2299,7 @@
                 {
                   "key": "manifest_json",
                   "type": "text",
-                  "value": "{\n  \"title\": \"Screenshot safe-share export\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"API key panel\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"mask\",\n        \"overlay_color\": \"#111111\",\n        \"overlay_label\": \"REDACTED\"\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
+                  "value": "{\n  \"title\": \"Screenshot safe-share export\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"apply_builtins\": true,\n  \"detect_text\": true,\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"API key panel\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"mask\",\n        \"overlay_color\": \"#111111\",\n        \"overlay_label\": \"REDACTED\"\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
                 }
               ]
             }

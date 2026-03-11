@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,11 @@ class SearchService:
         query: str,
         pagination: PaginationParams,
     ) -> tuple[list[SearchResultItem], PaginationMeta]:
+        if not query:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Search query must not be blank",
+            )
         normalized = f"%{query.lower()}%"
         results: list[SearchResultItem] = []
 

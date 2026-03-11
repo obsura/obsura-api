@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -49,21 +50,21 @@ def list_patterns(
 
 
 @router.get("/patterns/{pattern_id}", response_model=ApiResponse[PatternRead])
-def get_pattern(pattern_id: str, session: SessionDep) -> ApiResponse[PatternRead]:
+def get_pattern(pattern_id: UUID, session: SessionDep) -> ApiResponse[PatternRead]:
     """Fetch one saved pattern by identifier."""
 
-    return success_response(StudioService(session).get_pattern(pattern_id))
+    return success_response(StudioService(session).get_pattern(str(pattern_id)))
 
 
 @router.patch("/patterns/{pattern_id}", response_model=ApiResponse[PatternRead])
 def update_pattern(
-    pattern_id: str,
+    pattern_id: UUID,
     payload: PatternUpdate,
     session: SessionDep,
 ) -> ApiResponse[PatternRead]:
     """Update part of a saved pattern without replacing the whole record."""
 
-    return success_response(StudioService(session).update_pattern(pattern_id, payload))
+    return success_response(StudioService(session).update_pattern(str(pattern_id), payload))
 
 
 @router.post("/patterns/from-selection", response_model=ApiResponse[PatternRead], status_code=201)
@@ -98,21 +99,21 @@ def list_custom_entities(
 
 
 @router.get("/entities/{entity_id}", response_model=ApiResponse[CustomEntityRead])
-def get_custom_entity(entity_id: str, session: SessionDep) -> ApiResponse[CustomEntityRead]:
+def get_custom_entity(entity_id: UUID, session: SessionDep) -> ApiResponse[CustomEntityRead]:
     """Fetch one saved custom entity by identifier."""
 
-    return success_response(StudioService(session).get_custom_entity(entity_id))
+    return success_response(StudioService(session).get_custom_entity(str(entity_id)))
 
 
 @router.patch("/entities/{entity_id}", response_model=ApiResponse[CustomEntityRead])
 def update_custom_entity(
-    entity_id: str,
+    entity_id: UUID,
     payload: CustomEntityUpdate,
     session: SessionDep,
 ) -> ApiResponse[CustomEntityRead]:
     """Update part of a saved custom entity."""
 
-    return success_response(StudioService(session).update_custom_entity(entity_id, payload))
+    return success_response(StudioService(session).update_custom_entity(str(entity_id), payload))
 
 
 @router.post("/configurations", response_model=ApiResponse[ConfigurationRead], status_code=201)
@@ -137,21 +138,21 @@ def list_configurations(
 
 
 @router.get("/configurations/{configuration_id}", response_model=ApiResponse[ConfigurationRead])
-def get_configuration(configuration_id: str, session: SessionDep) -> ApiResponse[ConfigurationRead]:
+def get_configuration(configuration_id: UUID, session: SessionDep) -> ApiResponse[ConfigurationRead]:
     """Fetch one saved configuration asset by identifier."""
 
-    return success_response(StudioService(session).get_configuration(configuration_id))
+    return success_response(StudioService(session).get_configuration(str(configuration_id)))
 
 
 @router.patch("/configurations/{configuration_id}", response_model=ApiResponse[ConfigurationRead])
 def update_configuration(
-    configuration_id: str,
+    configuration_id: UUID,
     payload: ConfigurationUpdate,
     session: SessionDep,
 ) -> ApiResponse[ConfigurationRead]:
     """Update part of a saved configuration asset."""
 
-    return success_response(StudioService(session).update_configuration(configuration_id, payload))
+    return success_response(StudioService(session).update_configuration(str(configuration_id), payload))
 
 
 @router.get("/search", response_model=ApiResponse[list[SearchResultItem]])
@@ -162,5 +163,5 @@ def search_studio(
 ) -> ApiResponse[list[SearchResultItem]]:
     """Search across saved studio assets and persisted jobs."""
 
-    items, pagination_meta = SearchService(session).search(q, pagination)
+    items, pagination_meta = SearchService(session).search(q.strip(), pagination)
     return success_response(items, pagination=pagination_meta)

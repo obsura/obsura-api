@@ -27,7 +27,7 @@ from obsura_api.db.session import (
     verify_database_connection,
 )
 from obsura_api.services.providers.faces import build_face_detector
-from obsura_api.services.providers.ocr import NoOpOCRProvider
+from obsura_api.services.providers.ocr import build_ocr_provider
 from obsura_api.services.storage import StorageService
 
 logger = logging.getLogger(__name__)
@@ -73,21 +73,28 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Create the FastAPI application and shared runtime container."""
 
     settings = settings or get_settings()
+    logger.info(
+        "Starting %s v%s in %s mode",
+        settings.app_name,
+        __version__,
+        settings.normalized_environment,
+    )
     logger.info("Using %s database backend", settings.database_backend_summary)
+    if settings.auto_create_schema:
+        logger.info("Automatic Alembic upgrade-on-startup is enabled for this environment")
     engine = create_engine_from_settings(settings)
     verify_database_connection(engine)
-    initialized_tables = ensure_database_schema(
-        engine,
-        auto_create=settings.auto_create_schema,
+    schema_state = ensure_database_schema(engine, settings=settings)
+    logger.info(
+        "Database schema revision ready at %s",
+        schema_state.current_revision,
     )
-    if initialized_tables:
-        logger.info(
-            "Initialized database schema tables: %s",
-            ", ".join(initialized_tables),
-        )
     session_factory = create_session_factory(engine)
     storage = StorageService(settings)
+    storage.assert_ready()
+    ocr_provider = build_ocr_provider(settings)
     face_detector = build_face_detector(settings)
+    logger.info("Using `%s` OCR backend", ocr_provider.name)
     logger.info("Using `%s` face detector backend", face_detector.name)
 
     app = FastAPI(
@@ -120,7 +127,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         engine=engine,
         session_factory=session_factory,
         storage=storage,
-        ocr_provider=NoOpOCRProvider(),
+        ocr_provider=ocr_provider,
         face_detector=face_detector,
     )
 

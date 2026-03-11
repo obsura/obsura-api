@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from obsura_api.domain.common import TimestampedModel
+from obsura_api.domain.common import TimestampedModel, UuidReference
 from obsura_api.domain.enums import ConfigurationKind, ContentType, MatcherKind
 from obsura_api.domain.transforms import TransformationRule
 
 
 class PatternMatcherDefinition(BaseModel):
     """One custom detection rule."""
+
+    model_config = ConfigDict(extra="forbid")
 
     kind: MatcherKind
     value: str | None = None
@@ -26,6 +30,11 @@ class PatternMatcherDefinition(BaseModel):
             raise ValueError("`value` is required for exact and regex matchers")
         if self.kind is MatcherKind.VALUE_LIST and not self.values:
             raise ValueError("`values` is required for value-list matchers")
+        if self.kind is MatcherKind.REGEX and self.value:
+            try:
+                re.compile(self.value)
+            except re.error as exc:
+                raise ValueError(f"Invalid regex pattern: {exc}") from exc
         return self
 
 
@@ -34,7 +43,7 @@ class PatternBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     description: str | None = None
     category: str | None = None
     tags: list[str] = Field(default_factory=list)
@@ -50,6 +59,8 @@ class PatternCreate(PatternBase):
 
 class PatternUpdate(BaseModel):
     """Partial update for a pattern."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str | None = None
     description: str | None = None
@@ -70,7 +81,7 @@ class CustomEntityBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     description: str | None = None
     category: str | None = None
     tags: list[str] = Field(default_factory=list)
@@ -86,6 +97,8 @@ class CustomEntityCreate(CustomEntityBase):
 
 class CustomEntityUpdate(BaseModel):
     """Partial update for a custom entity."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str | None = None
     description: str | None = None
@@ -107,13 +120,13 @@ class ConfigurationBase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: ConfigurationKind
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     description: str | None = None
     category: str | None = None
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True
-    pattern_ids: list[str] = Field(default_factory=list)
-    custom_entity_ids: list[str] = Field(default_factory=list)
+    pattern_ids: list[UuidReference] = Field(default_factory=list)
+    custom_entity_ids: list[UuidReference] = Field(default_factory=list)
     default_text_transformation: TransformationRule | None = None
     default_image_transformation: TransformationRule | None = None
     face_preferences: dict[str, str | int | bool] = Field(default_factory=dict)
@@ -127,13 +140,15 @@ class ConfigurationCreate(ConfigurationBase):
 class ConfigurationUpdate(BaseModel):
     """Partial update for a configuration asset."""
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = None
     description: str | None = None
     category: str | None = None
     tags: list[str] | None = None
     is_active: bool | None = None
-    pattern_ids: list[str] | None = None
-    custom_entity_ids: list[str] | None = None
+    pattern_ids: list[UuidReference] | None = None
+    custom_entity_ids: list[UuidReference] | None = None
     default_text_transformation: TransformationRule | None = None
     default_image_transformation: TransformationRule | None = None
     face_preferences: dict[str, str | int | bool] | None = None
@@ -147,8 +162,10 @@ class ConfigurationRead(TimestampedModel, ConfigurationBase):
 class PatternFromSelectionRequest(BaseModel):
     """Create a reusable pattern from a selected exact value."""
 
-    name: str
-    selected_value: str
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    selected_value: str = Field(min_length=1)
     description: str | None = None
     category: str | None = None
     tags: list[str] = Field(default_factory=list)
@@ -156,4 +173,3 @@ class PatternFromSelectionRequest(BaseModel):
     applies_to: list[ContentType] = Field(
         default_factory=lambda: [ContentType.TEXT, ContentType.STRUCTURED_TEXT],
     )
-

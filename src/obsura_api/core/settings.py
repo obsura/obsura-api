@@ -41,11 +41,27 @@ class Settings(BaseSettings):
             "OBSURA_FACE_DETECTOR",
         ),
     )
+    ocr_backend: str = Field(
+        default="noop",
+        validation_alias=AliasChoices(
+            "OBSURA_OCR_BACKEND",
+            "OBSURA_OCR_PROVIDER",
+        ),
+    )
+    ocr_language: str = Field(
+        default="eng",
+        validation_alias=AliasChoices(
+            "OBSURA_OCR_LANGUAGE",
+            "OBSURA_TESSERACT_LANG",
+        ),
+    )
     storage_root: Path = Field(default=Path("storage"))
     media_mount_path: str = "/media"
-    auto_create_schema: bool = True
+    auto_create_schema: bool = False
     retain_source_content_by_default: bool = False
     image_output_format: str = "PNG"
+    max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
+    max_image_pixels: int = Field(default=20_000_000, ge=1)
 
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
@@ -68,6 +84,11 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Production environment requires a PostgreSQL DATABASE_URL or "
                 "OBSURA_DATABASE_URL.",
+            )
+        if self.is_production and self.auto_create_schema:
+            raise ValueError(
+                "Production environment must not use OBSURA_AUTO_CREATE_SCHEMA=true. "
+                "Apply Alembic migrations explicitly before starting the API.",
             )
 
         self.database_url = parsed_url.render_as_string(hide_password=False)

@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from obsura_api.domain.common import BoundingBox
+from obsura_api.domain.common import BoundingBox, UuidReference
 from obsura_api.domain.enums import ContentType, FindingKind, FindingSource, ReviewDecision
 from obsura_api.domain.transforms import TransformationRule
 
 
 class ManualTextSpan(BaseModel):
     """A manually selected range in text."""
+
+    model_config = ConfigDict(extra="forbid")
 
     start_index: int = Field(ge=0)
     end_index: int = Field(gt=0)
@@ -48,18 +50,26 @@ class FindingRecord(BaseModel):
 class TextAnalysisRequest(BaseModel):
     """Request to detect findings in text-like content."""
 
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = None
-    content: str
+    content: str = Field(min_length=1)
     content_type: ContentType = ContentType.TEXT
     apply_builtins: bool = True
-    pattern_ids: list[str] = Field(default_factory=list)
-    custom_entity_ids: list[str] = Field(default_factory=list)
-    configuration_ids: list[str] = Field(default_factory=list)
+    pattern_ids: list[UuidReference] = Field(default_factory=list)
+    custom_entity_ids: list[UuidReference] = Field(default_factory=list)
+    configuration_ids: list[UuidReference] = Field(default_factory=list)
     exact_values: list[str] = Field(default_factory=list)
     manual_spans: list[ManualTextSpan] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
     persist_job: bool = True
     persist_source_content: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_content_type(self) -> "TextAnalysisRequest":
+        if self.content_type not in {ContentType.TEXT, ContentType.STRUCTURED_TEXT}:
+            raise ValueError("Text workflows only support `text` and `structured_text` content")
+        return self
 
 
 class TextAnalysisResponse(BaseModel):
@@ -73,18 +83,32 @@ class TextAnalysisResponse(BaseModel):
 class FindingOverride(BaseModel):
     """Override a stored or transient finding before transformation."""
 
-    finding_id: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    finding_id: UuidReference | None = None
     start_index: int | None = None
     end_index: int | None = None
     decision: ReviewDecision | None = None
     transformation: TransformationRule | None = None
 
+    @model_validator(mode="after")
+    def validate_override(self) -> "FindingOverride":
+        if self.finding_id is None and self.start_index is None and self.end_index is None:
+            raise ValueError("A finding override must target a stored finding or a text span")
+        if self.start_index is not None and self.end_index is not None and self.end_index <= self.start_index:
+            raise ValueError("`end_index` must be greater than `start_index`")
+        if self.decision is None and self.transformation is None:
+            raise ValueError("A finding override must change the decision or transformation")
+        return self
+
 
 class TextTransformRequest(BaseModel):
     """Request to transform text from findings."""
 
+    model_config = ConfigDict(extra="forbid")
+
     content: str | None = None
-    job_id: str | None = None
+    job_id: UuidReference | None = None
     finding_overrides: list[FindingOverride] = Field(default_factory=list)
     include_pending: bool = False
     default_transformation: TransformationRule | None = None
@@ -119,6 +143,8 @@ class TextTransformResponse(BaseModel):
 class ImageRegionInput(BaseModel):
     """A region selected for image review or transformation."""
 
+    model_config = ConfigDict(extra="forbid")
+
     kind: FindingKind = FindingKind.IMAGE_REGION
     source: FindingSource = FindingSource.MANUAL
     entity_type: str = "IMAGE_REGION"
@@ -127,17 +153,41 @@ class ImageRegionInput(BaseModel):
     transformation: TransformationRule | None = None
     metadata: dict[str, str | int | bool | list[str]] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def validate_kind(self) -> "ImageRegionInput":
+        if self.kind not in {
+            FindingKind.IMAGE_REGION,
+            FindingKind.FACE_REGION,
+            FindingKind.FACE_SUBREGION,
+        }:
+            raise ValueError("Image workflow regions cannot use the `text_span` finding kind")
+        return self
+
 
 class ImageWorkflowManifest(BaseModel):
     """Non-file image workflow inputs."""
 
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = None
     content_type: ContentType = ContentType.IMAGE
-    configuration_ids: list[str] = Field(default_factory=list)
+    configuration_ids: list[UuidReference] = Field(default_factory=list)
+    pattern_ids: list[UuidReference] = Field(default_factory=list)
+    custom_entity_ids: list[UuidReference] = Field(default_factory=list)
+    exact_values: list[str] = Field(default_factory=list)
+    apply_builtins: bool = True
     regions: list[ImageRegionInput] = Field(default_factory=list)
+    detect_text: bool = False
     detect_faces: bool = False
+    default_transformation: TransformationRule | None = None
     persist_job: bool = True
     persist_source_content: bool | None = None
+
+    @model_validator(mode="after")
+    def validate_content_type(self) -> "ImageWorkflowManifest":
+        if self.content_type not in {ContentType.IMAGE, ContentType.SCREENSHOT}:
+            raise ValueError("Image workflows only support `image` and `screenshot` content")
+        return self
 
 
 class ImageWorkflowResponse(BaseModel):
@@ -154,15 +204,25 @@ class ImageWorkflowResponse(BaseModel):
 class ImageFindingOverride(BaseModel):
     """Override a stored image finding before export."""
 
-    finding_id: str
+    model_config = ConfigDict(extra="forbid")
+
+    finding_id: UuidReference
     decision: ReviewDecision | None = None
     transformation: TransformationRule | None = None
+
+    @model_validator(mode="after")
+    def validate_override(self) -> "ImageFindingOverride":
+        if self.decision is None and self.transformation is None:
+            raise ValueError("An image finding override must change the decision or transformation")
+        return self
 
 
 class ImageJobTransformRequest(BaseModel):
     """Request to transform a persisted image job after review."""
 
-    job_id: str
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: UuidReference
     finding_overrides: list[ImageFindingOverride] = Field(default_factory=list)
     include_pending: bool = False
     persist_output: bool = True

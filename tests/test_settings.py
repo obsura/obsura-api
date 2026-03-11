@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
-import subprocess
-import sys
 
 import pytest
 from pydantic import ValidationError
@@ -12,6 +9,8 @@ from sqlalchemy import inspect
 
 from obsura_api import app as app_module
 from obsura_api.core.settings import DEFAULT_DEVELOPMENT_DATABASE_URL, Settings, get_settings
+from obsura_api.db.base import Base
+from obsura_api.db.migrations import SchemaState, get_schema_state
 from obsura_api.db import session as session_module
 
 
@@ -22,6 +21,11 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_DATABASE_URL",
         "OBSURA_ENV",
         "OBSURA_ENVIRONMENT",
+        "OBSURA_AUTO_CREATE_SCHEMA",
+        "OBSURA_OCR_BACKEND",
+        "OBSURA_OCR_PROVIDER",
+        "OBSURA_OCR_LANGUAGE",
+        "OBSURA_TESSERACT_LANG",
     ):
         monkeypatch.delenv(key, raising=False)
     get_settings.cache_clear()
@@ -57,6 +61,15 @@ def test_production_rejects_sqlite_database_url(monkeypatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "sqlite:///./data/obsura.db")
 
     with pytest.raises(ValidationError, match="Production environment requires a PostgreSQL"):
+        Settings(_env_file=None)
+
+
+def test_production_rejects_automatic_schema_upgrade(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_ENVIRONMENT", "production")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://obsura:password@postgres:5432/obsura")
+    monkeypatch.setenv("OBSURA_AUTO_CREATE_SCHEMA", "true")
+
+    with pytest.raises(ValidationError, match="must not use OBSURA_AUTO_CREATE_SCHEMA=true"):
         Settings(_env_file=None)
 
 
@@ -99,7 +112,16 @@ def test_app_logs_sanitized_database_backend(monkeypatch, tmp_path: Path, caplog
 
     monkeypatch.setattr(app_module, "create_engine_from_settings", lambda current: object())
     monkeypatch.setattr(app_module, "verify_database_connection", lambda engine: None)
-    monkeypatch.setattr(app_module, "ensure_database_schema", lambda engine, *, auto_create: [])
+    monkeypatch.setattr(
+        app_module,
+        "ensure_database_schema",
+        lambda engine, *, settings: SchemaState(
+            current_revision="ebbb78f282b7",
+            expected_revision="ebbb78f282b7",
+            has_version_table=True,
+            has_application_tables=True,
+        ),
+    )
     monkeypatch.setattr(app_module, "create_session_factory", lambda engine: lambda: None)
 
     with caplog.at_level(logging.INFO):
@@ -109,50 +131,69 @@ def test_app_logs_sanitized_database_backend(monkeypatch, tmp_path: Path, caplog
     assert "password" not in caplog.text
 
 
-def test_initialize_database_creates_expected_tables_in_subprocess(tmp_path: Path) -> None:
-    database_path = tmp_path / "schema-check.db"
-    code = f"""
-from sqlalchemy import inspect
-from obsura_api.core.settings import Settings
-from obsura_api.db.session import create_engine_from_settings, initialize_database
-settings = Settings(database_url='sqlite:///{database_path.as_posix()}', _env_file=None)
-engine = create_engine_from_settings(settings)
-initialize_database(engine)
-print(','.join(sorted(inspect(engine).get_table_names())))
-"""
-    env = dict(os.environ)
-    env["PYTHONPATH"] = str(Path.cwd() / "src")
-    result = subprocess.run(
-        [sys.executable, "-c", code],
-        check=True,
-        capture_output=True,
-        text=True,
-        env=env,
+def test_upgrade_database_from_settings_creates_expected_tables(tmp_path: Path) -> None:
+    database_path = tmp_path / "migrated.db"
+    settings = Settings(
+        database_url=f"sqlite:///{database_path.as_posix()}",
+        auto_create_schema=False,
+        _env_file=None,
     )
-
-    assert "custom_entities" in result.stdout
-    assert "patterns" in result.stdout
-
-
-def test_ensure_database_schema_creates_missing_tables_when_enabled(tmp_path: Path) -> None:
-    database_path = tmp_path / "bootstrap.db"
-    settings = Settings(database_url=f"sqlite:///{database_path.as_posix()}", _env_file=None)
     engine = session_module.create_engine_from_settings(settings)
 
-    created_tables = session_module.ensure_database_schema(engine, auto_create=True)
+    session_module.upgrade_database_from_settings(settings)
+    schema_state = get_schema_state(engine, settings.database_url)
 
-    assert "patterns" in created_tables
-    assert "custom_entities" in created_tables
+    assert schema_state.is_at_head is True
+    assert "custom_entities" in inspect(engine).get_table_names()
     assert "patterns" in inspect(engine).get_table_names()
 
 
-def test_ensure_database_schema_rejects_missing_tables_when_disabled(tmp_path: Path) -> None:
-    database_path = tmp_path / "missing-schema.db"
-    settings = Settings(database_url=f"sqlite:///{database_path.as_posix()}", _env_file=None)
+def test_upgrade_database_from_settings_stamps_legacy_bootstrap_schema(tmp_path: Path) -> None:
+    database_path = tmp_path / "legacy.db"
+    settings = Settings(
+        database_url=f"sqlite:///{database_path.as_posix()}",
+        auto_create_schema=False,
+        _env_file=None,
+    )
     engine = session_module.create_engine_from_settings(settings)
 
-    with pytest.raises(RuntimeError, match="Database schema is not initialized"):
-        session_module.ensure_database_schema(engine, auto_create=False)
+    session_module.load_model_metadata()
+    Base.metadata.create_all(bind=engine)
+    assert get_schema_state(engine, settings.database_url).current_revision is None
+
+    session_module.upgrade_database_from_settings(settings)
+    schema_state = get_schema_state(engine, settings.database_url)
+
+    assert schema_state.is_at_head is True
+    assert schema_state.has_version_table is True
+
+
+def test_ensure_database_schema_applies_migrations_when_enabled(tmp_path: Path) -> None:
+    database_path = tmp_path / "auto-upgrade.db"
+    settings = Settings(
+        database_url=f"sqlite:///{database_path.as_posix()}",
+        auto_create_schema=True,
+        _env_file=None,
+    )
+    engine = session_module.create_engine_from_settings(settings)
+
+    schema_state = session_module.ensure_database_schema(engine, settings=settings)
+
+    assert schema_state.is_at_head is True
+    assert "patterns" in inspect(engine).get_table_names()
+
+
+def test_ensure_database_schema_rejects_uninitialized_database_when_disabled(tmp_path: Path) -> None:
+    database_path = tmp_path / "missing-schema.db"
+    settings = Settings(
+        database_url=f"sqlite:///{database_path.as_posix()}",
+        auto_create_schema=False,
+        _env_file=None,
+    )
+    engine = session_module.create_engine_from_settings(settings)
+
+    with pytest.raises(RuntimeError, match="Apply Alembic migrations"):
+        session_module.ensure_database_schema(engine, settings=settings)
 
 
 def test_app_startup_rejects_missing_schema_when_bootstrap_disabled(tmp_path: Path) -> None:
@@ -163,5 +204,5 @@ def test_app_startup_rejects_missing_schema_when_bootstrap_disabled(tmp_path: Pa
         _env_file=None,
     )
 
-    with pytest.raises(RuntimeError, match="Database schema is not initialized"):
+    with pytest.raises(RuntimeError, match="Apply Alembic migrations"):
         app_module.create_app(settings)

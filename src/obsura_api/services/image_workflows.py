@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from io import BytesIO
+from typing import Iterable
 
 from fastapi import HTTPException, status
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
 from obsura_api.db.models import Job, JobFinding, JobOutput
 from obsura_api.domain.enums import ContentType, FindingKind, FindingSource, JobStatus, ReviewDecision, TransformationMode
+from obsura_api.domain.common import BoundingBox
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
     FindingRecord,
@@ -20,11 +22,13 @@ from obsura_api.domain.workflows import (
     ImageWorkflowResponse,
 )
 
+from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.providers.faces import FaceDetector
+from obsura_api.services.providers.ocr import OCRBlock, OCRProvider
 from obsura_api.services.storage import StorageService
 from obsura_api.services.studio import StudioService
-from obsura_api.services.utils import summarize_findings
+from obsura_api.services.utils import hash_value, preview_value, summarize_findings
 
 
 class ImageWorkflowService:
@@ -35,13 +39,16 @@ class ImageWorkflowService:
         session: Session,
         settings: Settings,
         storage: StorageService,
+        ocr_provider: OCRProvider,
         face_detector: FaceDetector,
     ) -> None:
         self.session = session
         self.settings = settings
         self.storage = storage
+        self.ocr_provider = ocr_provider
         self.face_detector = face_detector
         self.studio = StudioService(session)
+        self.text_detection = TextDetectionService(session, settings)
 
     def analyze(
         self,
@@ -50,16 +57,20 @@ class ImageWorkflowService:
         filename: str,
         manifest: ImageWorkflowManifest,
     ) -> ImageWorkflowResponse:
-        findings = self._build_findings(file_bytes, manifest)
+        image = self._load_image(file_bytes)
+        findings = self._build_findings(file_bytes, manifest, image_size=image.size)
         stored_input_path = None
+        source_file_path = None
         job_id = None
         if manifest.persist_job:
-            stored_input = self.storage.save_upload(file_bytes, filename)
-            stored_input_path = str(stored_input)
+            if self._should_persist_source_file(manifest):
+                stored_input = self.storage.save_upload(file_bytes, filename)
+                source_file_path = str(stored_input)
+                stored_input_path = self.storage.storage_reference_for(stored_input)
             job_id = self._persist_job(
                 title=manifest.title,
                 content_type=manifest.content_type,
-                source_file_path=str(stored_input),
+                source_file_path=source_file_path,
                 findings=findings,
                 configuration_ids=manifest.configuration_ids,
             )
@@ -78,8 +89,8 @@ class ImageWorkflowService:
         filename: str,
         manifest: ImageWorkflowManifest,
     ) -> ImageWorkflowResponse:
-        image = Image.open(BytesIO(file_bytes)).convert("RGB")
-        findings = self._build_findings(file_bytes, manifest)
+        image = self._load_image(file_bytes)
+        findings = self._build_findings(file_bytes, manifest, image_size=image.size)
         for finding in findings:
             if finding.region is None:
                 continue
@@ -87,15 +98,19 @@ class ImageWorkflowService:
             self._apply_region(image, finding, rule)
 
         stored_input_path = None
+        source_file_path = None
         job_id = None
         stored_output = self.storage.save_image(image)
+        stored_output_path = self.storage.storage_reference_for(stored_output)
         if manifest.persist_job:
-            stored_input = self.storage.save_upload(file_bytes, filename)
-            stored_input_path = str(stored_input)
+            if self._should_persist_source_file(manifest):
+                stored_input = self.storage.save_upload(file_bytes, filename)
+                source_file_path = str(stored_input)
+                stored_input_path = self.storage.storage_reference_for(stored_input)
             job_id = self._persist_job(
                 title=manifest.title,
                 content_type=manifest.content_type,
-                source_file_path=str(stored_input),
+                source_file_path=source_file_path,
                 findings=findings,
                 configuration_ids=manifest.configuration_ids,
                 output_file_path=str(stored_output),
@@ -105,7 +120,7 @@ class ImageWorkflowService:
             job_id=job_id,
             findings=findings,
             stored_input_path=stored_input_path,
-            stored_output_path=str(stored_output),
+            stored_output_path=stored_output_path,
             media_url=self.storage.media_url_for(stored_output),
             summary=summarize_findings(findings),
         )
@@ -145,8 +160,9 @@ class ImageWorkflowService:
                 detail=str(exc),
             ) from exc
 
-        image = Image.open(BytesIO(file_bytes)).convert("RGB")
+        image = self._load_image(file_bytes)
         findings = [finding_to_schema(item) for item in job.findings]
+        self._validate_findings_within_bounds(findings, image.size)
         default_transformation = self._resolve_default_transformation(job.configuration_ids)
         active_findings = self._active_findings(findings, request.include_pending)
 
@@ -177,8 +193,8 @@ class ImageWorkflowService:
         return ImageWorkflowResponse(
             job_id=job.id,
             findings=findings,
-            stored_input_path=str(source_path),
-            stored_output_path=str(stored_output),
+            stored_input_path=self.storage.storage_reference_for(source_path),
+            stored_output_path=self.storage.storage_reference_for(stored_output),
             media_url=self.storage.media_url_for(stored_output),
             summary=summarize_findings(findings),
         )
@@ -187,8 +203,13 @@ class ImageWorkflowService:
         self,
         file_bytes: bytes,
         manifest: ImageWorkflowManifest,
+        *,
+        image_size: tuple[int, int],
     ) -> list[FindingRecord]:
-        default_transformation = self._resolve_default_transformation(manifest.configuration_ids)
+        default_transformation = self._resolve_default_transformation(
+            manifest.configuration_ids,
+            manifest.default_transformation,
+        )
         findings: list[FindingRecord] = []
         for region in manifest.regions:
             findings.append(
@@ -200,6 +221,15 @@ class ImageWorkflowService:
                     region=region.region,
                     transformation=region.transformation or default_transformation,
                     metadata=region.metadata,
+                ),
+            )
+
+        if manifest.detect_text:
+            findings.extend(
+                self._build_ocr_findings(
+                    file_bytes=file_bytes,
+                    manifest=manifest,
+                    default_transformation=default_transformation,
                 ),
             )
 
@@ -238,16 +268,198 @@ class ImageWorkflowService:
                             ),
                         ),
                     )
+        self._validate_findings_within_bounds(findings, image_size)
         return findings
 
     def _resolve_default_transformation(
         self,
         configuration_ids: list[str],
+        request_default: TransformationRule | None = None,
     ) -> TransformationRule | None:
+        if request_default is not None:
+            return request_default
         for configuration in self.studio.resolve_configurations(configuration_ids):
             if configuration.default_image_transformation:
                 return TransformationRule.model_validate(configuration.default_image_transformation)
         return None
+
+    def _build_ocr_findings(
+        self,
+        *,
+        file_bytes: bytes,
+        manifest: ImageWorkflowManifest,
+        default_transformation: TransformationRule | None,
+    ) -> list[FindingRecord]:
+        if not self.ocr_provider.supported:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                detail="Automatic OCR is not configured for this deployment",
+            )
+
+        ocr_blocks = self.ocr_provider.extract_text(file_bytes)
+        patterns, entities, text_default_transformation = (
+            self.text_detection.resolve_transient_detection_context(
+                content_type=ContentType.TEXT,
+                pattern_ids=manifest.pattern_ids,
+                custom_entity_ids=manifest.custom_entity_ids,
+                configuration_ids=manifest.configuration_ids,
+            )
+        )
+        findings: list[FindingRecord] = []
+        for block in ocr_blocks:
+            text_findings = self.text_detection.build_findings(
+                content=block.text,
+                content_type=ContentType.TEXT,
+                apply_builtins=manifest.apply_builtins,
+                exact_values=manifest.exact_values,
+                manual_spans=[],
+                patterns=patterns,
+                entities=entities,
+                default_transformation=text_default_transformation,
+            )
+            for text_finding in text_findings:
+                region = self._region_for_text_finding(block, text_finding)
+                matched_preview = text_finding.matched_text_preview or preview_value(block.text)
+                findings.append(
+                    FindingRecord(
+                        source=FindingSource.OCR,
+                        kind=FindingKind.IMAGE_REGION,
+                        entity_type=text_finding.entity_type,
+                        entity_name=text_finding.entity_name,
+                        region=region,
+                        matched_text_preview=matched_preview,
+                        matched_text_hash=text_finding.matched_text_hash or hash_value(block.text),
+                        confidence=block.confidence,
+                        transformation=self._visual_transformation_for_finding(
+                            text_finding.transformation,
+                            default_transformation,
+                        ),
+                        metadata={
+                            "ocr_text": block.text,
+                            "ocr_confidence": int(round(block.confidence * 100)),
+                            "ocr_detection_source": text_finding.source.value,
+                        },
+                    ),
+                )
+        return findings
+
+    def _region_for_text_finding(
+        self,
+        block: OCRBlock,
+        finding: FindingRecord,
+    ) -> BoundingBox:
+        if not block.tokens or finding.start_index is None or finding.end_index is None:
+            return block.region
+
+        matched_regions: list[BoundingBox] = []
+        cursor = 0
+        for index, token in enumerate(block.tokens):
+            if index > 0:
+                cursor += 1
+            token_start = cursor
+            token_end = token_start + len(token.text)
+            if finding.start_index < token_end and finding.end_index > token_start:
+                matched_regions.append(token.region)
+            cursor = token_end
+
+        if not matched_regions:
+            return block.region
+        return self._combine_regions(matched_regions)
+
+    def _visual_transformation_for_finding(
+        self,
+        raw_transformation: TransformationRule | None,
+        default_transformation: TransformationRule | None,
+    ) -> TransformationRule:
+        if raw_transformation is not None and raw_transformation.mode in {
+            TransformationMode.MASK,
+            TransformationMode.BLUR,
+            TransformationMode.PIXELATE,
+            TransformationMode.OVERLAY,
+            TransformationMode.IMAGE_REPLACEMENT,
+        }:
+            return raw_transformation
+        if default_transformation is not None:
+            return default_transformation
+        return TransformationRule(mode=TransformationMode.MASK)
+
+    def _combine_regions(self, regions: Iterable[BoundingBox]) -> BoundingBox:
+        items = list(regions)
+        if not items:
+            return BoundingBox(x=0, y=0, width=0, height=0)
+
+        left = min(item.x for item in items)
+        top = min(item.y for item in items)
+        right = max(item.x + item.width for item in items)
+        bottom = max(item.y + item.height for item in items)
+        return BoundingBox(
+            x=left,
+            y=top,
+            width=right - left,
+            height=bottom - top,
+        )
+
+    def _load_image(self, file_bytes: bytes) -> Image.Image:
+        try:
+            with Image.open(BytesIO(file_bytes)) as opened:
+                width, height = opened.size
+                if width * height > self.settings.max_image_pixels:
+                    raise HTTPException(
+                        status.HTTP_413_CONTENT_TOO_LARGE,
+                        detail=(
+                            "Image exceeds the configured pixel limit of "
+                            f"{self.settings.max_image_pixels}"
+                        ),
+                    )
+                opened.load()
+                return opened.convert("RGB")
+        except HTTPException:
+            raise
+        except Image.DecompressionBombError as exc:
+            raise HTTPException(
+                status.HTTP_413_CONTENT_TOO_LARGE,
+                detail="Image is too large to process safely",
+            ) from exc
+        except UnidentifiedImageError as exc:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is not a valid image",
+            ) from exc
+        except OSError as exc:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded image could not be processed",
+            ) from exc
+
+    def _validate_findings_within_bounds(
+        self,
+        findings: list[FindingRecord],
+        image_size: tuple[int, int],
+    ) -> None:
+        for finding in findings:
+            if finding.region is None:
+                continue
+            self._validate_region(finding.region, image_size)
+
+    def _validate_region(
+        self,
+        region: BoundingBox,
+        image_size: tuple[int, int],
+    ) -> None:
+        image_width, image_height = image_size
+        if region.x + region.width > image_width or region.y + region.height > image_height:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    "Image region is outside the uploaded image bounds "
+                    f"({image_width}x{image_height})"
+                ),
+            )
+
+    def _should_persist_source_file(self, manifest: ImageWorkflowManifest) -> bool:
+        if manifest.persist_source_content is not None:
+            return manifest.persist_source_content
+        return True
 
     def _apply_region(
         self,
@@ -319,7 +531,7 @@ class ImageWorkflowService:
         *,
         title: str | None,
         content_type: object,
-        source_file_path: str,
+        source_file_path: str | None,
         findings: list[FindingRecord],
         configuration_ids: list[str],
         output_file_path: str | None = None,

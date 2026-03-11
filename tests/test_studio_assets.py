@@ -86,3 +86,46 @@ def test_not_found_errors_use_unified_envelope(client) -> None:
     assert body["success"] is False
     assert body["error"]["code"] == "not_found"
     assert body["error"]["message"] == "Not Found"
+
+
+def test_configuration_rejects_missing_references(client) -> None:
+    response = client.post(
+        "/api/v1/studio/configurations",
+        json={
+            "kind": "pack",
+            "name": "Broken Pack",
+            "pattern_ids": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+        },
+    )
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["message"].startswith("Pattern reference not found")
+
+
+def test_search_rejects_blank_query_after_trim(client) -> None:
+    response = client.get("/api/v1/studio/search", params={"q": "   "})
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["message"] == "Search query must not be blank"
+
+
+def test_pattern_creation_rejects_invalid_regex(client) -> None:
+    response = client.post(
+        "/api/v1/studio/patterns",
+        json={
+            "name": "Broken Regex",
+            "matcher": {
+                "kind": "regex",
+                "value": "(",
+            },
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "validation_error"

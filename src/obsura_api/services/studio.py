@@ -128,6 +128,10 @@ class StudioService:
         return CustomEntityRead.model_validate(entity, from_attributes=True)
 
     def create_configuration(self, payload: ConfigurationCreate) -> ConfigurationRead:
+        self._validate_configuration_references(
+            pattern_ids=payload.pattern_ids,
+            custom_entity_ids=payload.custom_entity_ids,
+        )
         data = payload.model_dump()
         configuration = StudioConfiguration(
             **{key: value for key, value in data.items() if key != "metadata"},
@@ -168,7 +172,12 @@ class StudioService:
         configuration = self.session.get(StudioConfiguration, configuration_id)
         if configuration is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Configuration not found")
-        for field_name, value in payload.model_dump(exclude_unset=True).items():
+        updates = payload.model_dump(exclude_unset=True)
+        self._validate_configuration_references(
+            pattern_ids=updates.get("pattern_ids", configuration.pattern_ids),
+            custom_entity_ids=updates.get("custom_entity_ids", configuration.custom_entity_ids),
+        )
+        for field_name, value in updates.items():
             if field_name == "metadata":
                 configuration.extra_data = value
             else:
@@ -180,21 +189,24 @@ class StudioService:
     def resolve_patterns(self, pattern_ids: list[str]) -> list[Pattern]:
         if not pattern_ids:
             return []
-        return self.session.scalars(select(Pattern).where(Pattern.id.in_(pattern_ids))).all()
+        rows = self.session.scalars(select(Pattern).where(Pattern.id.in_(pattern_ids))).all()
+        return self._ordered_entities(pattern_ids, rows, "Pattern")
 
     def resolve_custom_entities(self, entity_ids: list[str]) -> list[CustomEntity]:
         if not entity_ids:
             return []
-        return self.session.scalars(
+        rows = self.session.scalars(
             select(CustomEntity).where(CustomEntity.id.in_(entity_ids)),
         ).all()
+        return self._ordered_entities(entity_ids, rows, "Custom entity")
 
     def resolve_configurations(self, configuration_ids: list[str]) -> list[StudioConfiguration]:
         if not configuration_ids:
             return []
-        return self.session.scalars(
+        rows = self.session.scalars(
             select(StudioConfiguration).where(StudioConfiguration.id.in_(configuration_ids)),
         ).all()
+        return self._ordered_entities(configuration_ids, rows, "Configuration")
 
     def _configuration_to_schema(self, configuration: StudioConfiguration) -> ConfigurationRead:
         return ConfigurationRead(
@@ -214,3 +226,28 @@ class StudioService:
             face_preferences=configuration.face_preferences,
             metadata=configuration.extra_data,
         )
+
+    def _validate_configuration_references(
+        self,
+        *,
+        pattern_ids: list[str],
+        custom_entity_ids: list[str],
+    ) -> None:
+        self.resolve_patterns(pattern_ids)
+        self.resolve_custom_entities(custom_entity_ids)
+
+    def _ordered_entities(
+        self,
+        expected_ids: list[str],
+        rows: list[object],
+        entity_label: str,
+    ) -> list[object]:
+        by_id = {getattr(row, "id"): row for row in rows}
+        missing_ids = [item_id for item_id in expected_ids if item_id not in by_id]
+        if missing_ids:
+            missing_label = ", ".join(missing_ids)
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                detail=f"{entity_label} reference not found: {missing_label}",
+            )
+        return [by_id[item_id] for item_id in expected_ids]

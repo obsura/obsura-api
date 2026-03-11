@@ -4,13 +4,21 @@ from __future__ import annotations
 
 from datetime import datetime
 from math import ceil
-from typing import Any, Generic, TypeVar
+from typing import Annotated, Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from obsura_api.domain.enums import SearchResultKind
 
 T = TypeVar("T")
+UUID_REFERENCE_PATTERN = (
+    r"^[0-9a-fA-F]{8}-"
+    r"[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{12}$"
+)
+UuidReference = Annotated[str, Field(pattern=UUID_REFERENCE_PATTERN)]
 
 
 class TimestampedModel(BaseModel):

@@ -32,6 +32,7 @@ class BuiltInPattern:
     entity_name: str
     pattern: re.Pattern[str]
     transformation: TransformationRule
+    group_index: int | None = None
 
 
 BUILT_IN_PATTERNS: list[BuiltInPattern] = [
@@ -63,6 +64,88 @@ BUILT_IN_PATTERNS: list[BuiltInPattern] = [
         ),
     ),
     BuiltInPattern(
+        entity_type="JWT",
+        entity_name="JSON Web Token",
+        pattern=re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b"),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="JWT",
+        ),
+    ),
+    BuiltInPattern(
+        entity_type="AWS_ACCESS_KEY_ID",
+        entity_name="AWS access key ID",
+        pattern=re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="AWS_ACCESS_KEY",
+        ),
+    ),
+    BuiltInPattern(
+        entity_type="GITHUB_TOKEN",
+        entity_name="GitHub token",
+        pattern=re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,255}\b"),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="GITHUB_TOKEN",
+        ),
+    ),
+    BuiltInPattern(
+        entity_type="BEARER_TOKEN",
+        entity_name="Bearer token",
+        pattern=re.compile(r"(?i)\bbearer\s+([A-Za-z0-9._-]{16,})\b"),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="BEARER_TOKEN",
+        ),
+        group_index=1,
+    ),
+    BuiltInPattern(
+        entity_type="SECRET_VALUE",
+        entity_name="Secret assignment value",
+        pattern=re.compile(
+            r"(?im)\b(?:api[_-]?key|secret|token|password|passwd|pwd)\b\s*[:=]\s*['\"]?([^\s'\"`]{4,})",
+        ),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="SECRET_VALUE",
+        ),
+        group_index=1,
+    ),
+    BuiltInPattern(
+        entity_type="ENV_SECRET",
+        entity_name="Environment secret value",
+        pattern=re.compile(
+            r"(?im)^(?:export\s+)?[A-Z][A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASSWORD)[A-Z0-9_]*\s*=\s*['\"]?([^\n'\"`]+)",
+        ),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="ENV_SECRET",
+        ),
+        group_index=1,
+    ),
+    BuiltInPattern(
+        entity_type="SSH_PUBLIC_KEY",
+        entity_name="SSH public key",
+        pattern=re.compile(r"\bssh-(?:rsa|ed25519|ecdsa)\s+[A-Za-z0-9+/=]+(?:\s+[^\s]+)?"),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="SSH_KEY",
+        ),
+    ),
+    BuiltInPattern(
+        entity_type="PRIVATE_KEY",
+        entity_name="Private key block",
+        pattern=re.compile(
+            r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]+?-----END [A-Z0-9 ]*PRIVATE KEY-----",
+            re.MULTILINE,
+        ),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="PRIVATE_KEY",
+        ),
+    ),
+    BuiltInPattern(
         entity_type="HOSTNAME",
         entity_name="Hostname or domain",
         pattern=re.compile(r"\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b"),
@@ -83,31 +166,70 @@ class TextDetectionService:
         self.studio = StudioService(session)
 
     def analyze(self, request: TextAnalysisRequest) -> TextAnalysisResponse:
-        configurations = self.studio.resolve_configurations(request.configuration_ids)
-        pattern_ids = unique_ids(
-            request.pattern_ids,
-            *(config.pattern_ids for config in configurations),
+        (
+            patterns,
+            entities,
+            pattern_ids,
+            custom_entity_ids,
+            configuration_ids,
+            default_transformation,
+        ) = self._resolve_detection_inputs(
+            content_type=request.content_type,
+            pattern_ids=request.pattern_ids,
+            custom_entity_ids=request.custom_entity_ids,
+            configuration_ids=request.configuration_ids,
+            default_transformation=request.default_transformation,
         )
-        custom_entity_ids = unique_ids(
-            request.custom_entity_ids,
-            *(config.custom_entity_ids for config in configurations),
-        )
-        patterns = [item for item in self.studio.resolve_patterns(pattern_ids) if item.is_active]
-        entities = [
-            item for item in self.studio.resolve_custom_entities(custom_entity_ids) if item.is_active
-        ]
-        default_transformation = self._resolve_default_transformation(
-            request.default_transformation,
-            configurations,
+        findings = self.build_findings(
+            content=request.content,
+            content_type=request.content_type,
+            apply_builtins=request.apply_builtins,
+            exact_values=request.exact_values,
+            manual_spans=request.manual_spans,
+            patterns=patterns,
+            entities=entities,
+            default_transformation=default_transformation,
         )
 
+        job_id: str | None = None
+        if request.persist_job:
+            persist_source = request.persist_source_content
+            if persist_source is None:
+                persist_source = self.settings.retain_source_content_by_default
+            job_id = self._persist_job(
+                title=request.title,
+                content_type=request.content_type,
+                content=request.content if persist_source else None,
+                pattern_ids=pattern_ids,
+                custom_entity_ids=custom_entity_ids,
+                configuration_ids=configuration_ids,
+                findings=findings,
+            )
+
+        summary = summarize_findings(findings)
+        return TextAnalysisResponse(job_id=job_id, findings=findings, summary=summary)
+
+    def build_findings(
+        self,
+        *,
+        content: str,
+        content_type: ContentType,
+        apply_builtins: bool,
+        exact_values: list[str],
+        manual_spans: list[ManualTextSpan],
+        patterns: list[object],
+        entities: list[object],
+        default_transformation: TransformationRule | None,
+    ) -> list[FindingRecord]:
+        """Build transient findings for text content without persisting a job."""
+
         findings: list[FindingRecord] = []
-        if request.apply_builtins:
-            findings.extend(self._detect_built_ins(request.content, default_transformation))
+        if apply_builtins:
+            findings.extend(self._detect_built_ins(content, default_transformation))
 
         for pattern in patterns:
             matcher = PatternMatcherDefinition.model_validate(pattern.matcher)
-            if request.content_type not in matcher.applies_to:
+            if content_type not in matcher.applies_to:
                 continue
             transformation = self._coalesce_transformation(
                 pattern.transformation,
@@ -115,7 +237,7 @@ class TextDetectionService:
             )
             findings.extend(
                 self._detect_matcher(
-                    request.content,
+                    content,
                     matcher,
                     source=FindingSource.CUSTOM,
                     entity_type=pattern.name,
@@ -131,11 +253,11 @@ class TextDetectionService:
             )
             for definition in entity.detection_definitions:
                 matcher = PatternMatcherDefinition.model_validate(definition)
-                if request.content_type not in matcher.applies_to:
+                if content_type not in matcher.applies_to:
                     continue
                 findings.extend(
                     self._detect_matcher(
-                        request.content,
+                        content,
                         matcher,
                         source=FindingSource.CUSTOM,
                         entity_type=entity.name,
@@ -144,15 +266,15 @@ class TextDetectionService:
                     ),
                 )
 
-        for exact_value in request.exact_values:
+        for exact_value in exact_values:
             matcher = PatternMatcherDefinition(
                 kind=MatcherKind.EXACT,
                 value=exact_value,
-                applies_to=[request.content_type],
+                applies_to=[content_type],
             )
             findings.extend(
                 self._detect_matcher(
-                    request.content,
+                    content,
                     matcher,
                     source=FindingSource.MANUAL,
                     entity_type="EXACT_VALUE",
@@ -161,26 +283,73 @@ class TextDetectionService:
                 ),
             )
 
-        findings.extend(self._manual_findings(request.content, request.manual_spans))
-        findings = self._deduplicate_findings(findings)
+        findings.extend(self._manual_findings(content, manual_spans))
+        return self._deduplicate_findings(findings)
 
-        job_id: str | None = None
-        if request.persist_job:
-            persist_source = request.persist_source_content
-            if persist_source is None:
-                persist_source = self.settings.retain_source_content_by_default
-            job_id = self._persist_job(
-                title=request.title,
-                content_type=request.content_type,
-                content=request.content if persist_source else None,
-                pattern_ids=pattern_ids,
-                custom_entity_ids=custom_entity_ids,
-                configuration_ids=request.configuration_ids,
-                findings=findings,
-            )
+    def resolve_transient_detection_context(
+        self,
+        *,
+        content_type: ContentType,
+        pattern_ids: list[str],
+        custom_entity_ids: list[str],
+        configuration_ids: list[str],
+        default_transformation: TransformationRule | None = None,
+    ) -> tuple[list[object], list[object], TransformationRule | None]:
+        """Resolve reusable detection inputs for transient text analysis."""
 
-        summary = summarize_findings(findings)
-        return TextAnalysisResponse(job_id=job_id, findings=findings, summary=summary)
+        patterns, entities, _, _, _, resolved_default = self._resolve_detection_inputs(
+            content_type=content_type,
+            pattern_ids=pattern_ids,
+            custom_entity_ids=custom_entity_ids,
+            configuration_ids=configuration_ids,
+            default_transformation=default_transformation,
+        )
+        return patterns, entities, resolved_default
+
+    def _resolve_detection_inputs(
+        self,
+        *,
+        content_type: ContentType,
+        pattern_ids: list[str],
+        custom_entity_ids: list[str],
+        configuration_ids: list[str],
+        default_transformation: TransformationRule | None,
+    ) -> tuple[
+        list[object],
+        list[object],
+        list[str],
+        list[str],
+        list[str],
+        TransformationRule | None,
+    ]:
+        configurations = self.studio.resolve_configurations(configuration_ids)
+        resolved_pattern_ids = unique_ids(
+            pattern_ids,
+            *(config.pattern_ids for config in configurations),
+        )
+        resolved_custom_entity_ids = unique_ids(
+            custom_entity_ids,
+            *(config.custom_entity_ids for config in configurations),
+        )
+        patterns = [item for item in self.studio.resolve_patterns(resolved_pattern_ids) if item.is_active]
+        entities = [
+            item
+            for item in self.studio.resolve_custom_entities(resolved_custom_entity_ids)
+            if item.is_active
+        ]
+        resolved_default = self._resolve_default_transformation(
+            default_transformation,
+            configurations,
+        )
+        _ = content_type
+        return (
+            patterns,
+            entities,
+            resolved_pattern_ids,
+            resolved_custom_entity_ids,
+            unique_ids(configuration_ids),
+            resolved_default,
+        )
 
     def _resolve_default_transformation(
         self,
@@ -212,11 +381,13 @@ class TextDetectionService:
         for definition in BUILT_IN_PATTERNS:
             transformation = default_transformation or definition.transformation
             for match in definition.pattern.finditer(text):
+                start_index = match.start(definition.group_index or 0)
+                end_index = match.end(definition.group_index or 0)
                 findings.append(
                     self._build_text_finding(
                         text=text,
-                        start_index=match.start(),
-                        end_index=match.end(),
+                        start_index=start_index,
+                        end_index=end_index,
                         source=FindingSource.BUILT_IN,
                         entity_type=definition.entity_type,
                         entity_name=definition.entity_name,

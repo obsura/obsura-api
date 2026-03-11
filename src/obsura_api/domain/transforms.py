@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
+import re
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from obsura_api.domain.enums import TransformationMode
 
 
 class TransformationRule(BaseModel):
     """How a finding should be transformed for output."""
+
+    model_config = ConfigDict(extra="forbid")
 
     mode: TransformationMode = TransformationMode.GENERIC
     placeholder: str | None = None
@@ -24,6 +28,11 @@ class TransformationRule(BaseModel):
 
     @model_validator(mode="after")
     def validate_mode_settings(self) -> "TransformationRule":
+        if len(self.mask_character) != 1:
+            raise ValueError("`mask_character` must be a single character")
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}", self.overlay_color):
+            raise ValueError("`overlay_color` must be a hex color like `#111111`")
+
         if self.mode in {
             TransformationMode.CUSTOM,
             TransformationMode.GENERIC,
@@ -34,4 +43,3 @@ class TransformationRule(BaseModel):
             self.semantic_label = "SENSITIVE_VALUE"
 
         return self
-

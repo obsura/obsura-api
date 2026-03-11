@@ -103,3 +103,32 @@ def test_text_transform_requires_explicit_pending_opt_in(client) -> None:
     )
     assert pending_transform_response.status_code == 200
     assert pending_transform_response.json()["data"]["output_text"] == "secret=[REDACTED]"
+
+
+def test_built_in_technical_detectors_cover_common_secret_shapes(client) -> None:
+    response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": (
+                "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+                "eyJzdWIiOiIxMjM0NTY3ODkwIn0.signaturepart\n"
+                "AWS_ACCESS_KEY_ID=AKIA1234567890ABCDEF\n"
+                "GITHUB_TOKEN=ghp_1234567890abcdefghijklmnopqrstuv\n"
+                "password=supersecretvalue\n"
+                "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7 example@host\n"
+                "-----BEGIN PRIVATE KEY-----\nabc123\n-----END PRIVATE KEY-----\n"
+            ),
+            "persist_job": False,
+        },
+    )
+    assert response.status_code == 200
+    findings = response.json()["data"]["findings"]
+    entity_types = {item["entity_type"] for item in findings}
+
+    assert "JWT" in entity_types
+    assert "AWS_ACCESS_KEY_ID" in entity_types
+    assert "GITHUB_TOKEN" in entity_types
+    assert "ENV_SECRET" in entity_types
+    assert "SECRET_VALUE" in entity_types
+    assert "SSH_PUBLIC_KEY" in entity_types
+    assert "PRIVATE_KEY" in entity_types

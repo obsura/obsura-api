@@ -9,10 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from obsura_api.app import create_app
+from obsura_api.core.settings import get_settings
 
 COLLECTION_VARIABLES: list[tuple[str, str]] = [
     ("baseUrl", "http://localhost:8000"),
     ("searchQuery", "infra"),
+    ("page", "1"),
+    ("page_size", "20"),
     ("patternId", ""),
     ("entityId", ""),
     ("configurationId", ""),
@@ -205,6 +208,10 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 "title": "Screenshot region review",
                 "content_type": "screenshot",
                 "configuration_ids": ["{{configurationId}}"],
+                "pattern_ids": ["{{patternId}}"],
+                "custom_entity_ids": ["{{entityId}}"],
+                "apply_builtins": True,
+                "detect_text": True,
                 "regions": [
                     {
                         "kind": "image_region",
@@ -227,6 +234,10 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 "title": "Screenshot safe-share export",
                 "content_type": "screenshot",
                 "configuration_ids": ["{{configurationId}}"],
+                "pattern_ids": ["{{patternId}}"],
+                "custom_entity_ids": ["{{entityId}}"],
+                "apply_builtins": True,
+                "detect_text": True,
                 "regions": [
                     {
                         "kind": "image_region",
@@ -565,7 +576,8 @@ def build_postman_collection(openapi_document: dict[str, Any]) -> dict[str, Any]
                 "2. Run create endpoints for patterns, entities, or configurations.\n"
                 "3. The collection automatically captures IDs such as `patternId`, "
                 "`configurationId`, `jobId`, and `findingId` from JSON responses.\n"
-                "4. Follow the text or image workflow requests in order without manually copying IDs."
+                "4. Follow the text or image workflow requests in order without manually copying IDs.\n"
+                "5. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing."
             ),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "_postman_id": "obsura-api-collection",
@@ -584,7 +596,7 @@ def generate_artifacts(output_directory: Path | None = None) -> tuple[Path, Path
     target_directory = output_directory or Path.cwd()
     target_directory.mkdir(parents=True, exist_ok=True)
 
-    app = create_app()
+    app = create_app(get_settings().model_copy(update={"auto_create_schema": True}))
     openapi_document = app.openapi()
     postman_collection = build_postman_collection(openapi_document)
 

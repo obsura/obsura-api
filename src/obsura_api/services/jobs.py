@@ -12,6 +12,7 @@ from obsura_api.domain.enums import JobStatus
 from obsura_api.domain.jobs import JobOutputRecord, JobRead, JobReviewRequest
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingRecord
+from obsura_api.services.storage import StorageService
 from obsura_api.services.utils import summarize_findings
 
 
@@ -41,9 +42,17 @@ def finding_to_schema(finding: JobFinding) -> FindingRecord:
     )
 
 
-def output_to_schema(output: JobOutput) -> JobOutputRecord:
+def output_to_schema(
+    output: JobOutput,
+    *,
+    storage: StorageService | None = None,
+) -> JobOutputRecord:
     """Convert a stored job output into an API model."""
 
+    output_file_path = _storage_reference(storage, output.output_file_path)
+    media_url = None
+    if storage is not None and output.output_file_path:
+        media_url = storage.media_url_for(output.output_file_path)
     return JobOutputRecord(
         id=output.id,
         created_at=output.created_at,
@@ -51,16 +60,17 @@ def output_to_schema(output: JobOutput) -> JobOutputRecord:
         job_id=output.job_id,
         content_type=output.content_type,
         output_text=output.output_text,
-        output_file_path=output.output_file_path,
+        output_file_path=output_file_path,
+        media_url=media_url,
         metadata=output.extra_data,
     )
 
 
-def job_to_schema(job: Job) -> JobRead:
+def job_to_schema(job: Job, *, storage: StorageService | None = None) -> JobRead:
     """Convert a stored job and its relationships into an API model."""
 
     findings = [finding_to_schema(item) for item in job.findings]
-    outputs = [output_to_schema(item) for item in job.outputs]
+    outputs = [output_to_schema(item, storage=storage) for item in job.outputs]
     return JobRead(
         id=job.id,
         created_at=job.created_at,
@@ -69,7 +79,7 @@ def job_to_schema(job: Job) -> JobRead:
         status=job.status,
         content_type=job.content_type,
         source_text=job.source_text,
-        source_file_path=job.source_file_path,
+        source_file_path=_storage_reference(storage, job.source_file_path),
         pattern_ids=job.pattern_ids,
         custom_entity_ids=job.custom_entity_ids,
         configuration_ids=job.configuration_ids,
@@ -79,11 +89,20 @@ def job_to_schema(job: Job) -> JobRead:
     )
 
 
+def _storage_reference(storage: StorageService | None, raw_path: str | None) -> str | None:
+    if raw_path is None:
+        return None
+    if storage is None:
+        return raw_path
+    return storage.storage_reference_for(raw_path)
+
+
 class JobService:
     """Inspect and update stored jobs."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, storage: StorageService | None = None) -> None:
         self.session = session
+        self.storage = storage
 
     def list_jobs(self, pagination: PaginationParams) -> tuple[list[JobRead], PaginationMeta]:
         total_items = self.session.scalar(select(func.count()).select_from(Job)) or 0
@@ -95,7 +114,7 @@ class JobService:
             .limit(pagination.page_size),
         ).all()
         return (
-            [job_to_schema(job) for job in jobs],
+            [job_to_schema(job, storage=self.storage) for job in jobs],
             build_pagination_meta(params=pagination, total_items=total_items),
         )
 
@@ -107,7 +126,7 @@ class JobService:
         )
         if job is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
-        return job_to_schema(job)
+        return job_to_schema(job, storage=self.storage)
 
     def review_job(self, job_id: str, payload: JobReviewRequest) -> JobRead:
         job = self.session.scalar(

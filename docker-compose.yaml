@@ -39,15 +39,7 @@ services:
     environment:
       OBSURA_ENVIRONMENT: production
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-    command:
-      - python
-      - -c
-      - |
-        from obsura_api.core.settings import Settings
-        from obsura_api.db.session import create_engine_from_settings, initialize_database
-        settings = Settings()
-        engine = create_engine_from_settings(settings)
-        initialize_database(engine)
+    command: ["obsura-api-migrate", "upgrade", "head"]
     networks:
       - obsura
     logging: *default-logging
@@ -65,7 +57,7 @@ services:
       OBSURA_ENVIRONMENT: production
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       OBSURA_STORAGE_ROOT: /app/storage
-      OBSURA_AUTO_CREATE_SCHEMA: ${OBSURA_AUTO_CREATE_SCHEMA:-true}
+      OBSURA_AUTO_CREATE_SCHEMA: ${OBSURA_AUTO_CREATE_SCHEMA:-false}
       OBSURA_RETAIN_SOURCE_CONTENT_BY_DEFAULT: ${OBSURA_RETAIN_SOURCE_CONTENT_BY_DEFAULT:-false}
       OBSURA_FACE_DETECTOR_BACKEND: ${OBSURA_FACE_DETECTOR_BACKEND:-noop}
     ports:
@@ -82,7 +74,7 @@ services:
         - CMD
         - python
         - -c
-        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5)
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=5)
       interval: 30s
       timeout: 5s
       retries: 3

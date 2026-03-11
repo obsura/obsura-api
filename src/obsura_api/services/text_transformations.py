@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from obsura_api.db.models import Job, JobOutput
-from obsura_api.domain.enums import FindingSource, JobStatus, ReviewDecision, TransformationMode
+from obsura_api.domain.enums import ContentType, FindingSource, JobStatus, ReviewDecision, TransformationMode
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
     FindingOverride,
@@ -46,6 +46,11 @@ class TextTransformationService:
         job = self.session.get(Job, request.job_id)
         if job is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+        if job.content_type not in {ContentType.TEXT, ContentType.STRUCTURED_TEXT}:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Only text jobs can be transformed with this endpoint",
+            )
 
         stored_findings = {item.id: item for item in job.findings}
         for override in request.finding_overrides:

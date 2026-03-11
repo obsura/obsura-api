@@ -16,6 +16,18 @@ from obsura_api.domain.common import ApiError, ApiResponse, PaginationMeta
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_details(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _sanitize_details(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_details(item) for item in value]
+    if isinstance(value, tuple):
+        return [_sanitize_details(item) for item in value]
+    if isinstance(value, Exception):
+        return str(value)
+    return value
+
+
 def success_response(
     data: Any,
     *,
@@ -43,11 +55,15 @@ def error_response(
 
     payload = ApiResponse[Any](
         success=False,
-        error=ApiError(code=code, message=message, details=details),
+        error=ApiError(code=code, message=message, details=_sanitize_details(details)),
     )
     return JSONResponse(
         status_code=status_code,
-        content=payload.model_dump(mode="json", exclude_none=True),
+        content=payload.model_dump(
+            mode="json",
+            exclude_none=True,
+            fallback=lambda value: str(value),
+        ),
     )
 
 

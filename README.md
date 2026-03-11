@@ -18,10 +18,12 @@ This repository currently provides:
 - image-region transformation for blur, pixelation, masks, and overlays using
   manual or pre-supplied regions
 - pluggable provider boundaries for OCR and face detection
+- optional Tesseract-backed OCR for screenshot text detection and reviewable
+  OCR-derived image regions
 
-Automatic OCR and automatic face detection are intentionally provider-based.
-The default implementation keeps those boundaries explicit without pretending
-that a no-op fallback is a finished detection system.
+Automatic OCR and automatic face detection remain provider-based. The default
+implementation keeps those boundaries explicit, while the OCR path now supports
+an optional Tesseract backend for screenshot-first workflows.
 
 ## Standards Alignment
 
@@ -54,12 +56,30 @@ tests/        behavior-focused API and service tests
 1. Create a virtual environment.
 2. Install dependencies with `python -m pip install -e .[dev]`.
 3. Copy `.env.example` to `.env` if you want to customize settings.
-4. Run the API with `python -m obsura_api.main`.
-5. Run tests with `python -m pytest`.
-6. Regenerate API artifacts with `python -m obsura_api.tools.api_artifacts`.
+4. Apply migrations with `obsura-api-migrate upgrade head`.
+5. Run the API with `python -m obsura_api.main`.
+6. Run tests with `python -m pytest`.
+7. Regenerate API artifacts with `python -m obsura_api.tools.api_artifacts`.
 
 The default database is SQLite for local execution and tests. Production should
 use PostgreSQL as defined in [STACK.md](STACK.md).
+
+Alembic migrations are now the authoritative schema mechanism for the project.
+The API no longer treats SQLAlchemy `create_all()` as the production schema
+evolution path.
+
+Development/test convenience:
+
+- if `OBSURA_AUTO_CREATE_SCHEMA=true`, the app will automatically run Alembic
+  migrations up to the current head on startup
+- this is intended only for development and tests
+- production must keep `OBSURA_AUTO_CREATE_SCHEMA=false`
+
+Current operational endpoints:
+
+- `GET /api/v1/health` for liveness
+- `GET /api/v1/ready` for dependency-aware readiness
+- `GET /api/v1/version` for runtime version and backend metadata
 
 ## Docker
 
@@ -91,18 +111,25 @@ Typical flow:
 The compose stack includes:
 
 - PostgreSQL with a persistent named volume
-- a one-shot schema initialization service
+- a one-shot migration service
 - the API container with a persistent storage volume
 - healthchecks and startup ordering
 
-Until Alembic migrations are added, the API container also defaults
-`OBSURA_AUTO_CREATE_SCHEMA=true` in the compose stack. That makes startup
-self-heal when the schema is missing and prevents the service from coming up
-healthy while `/api/v1/studio` fails due to absent tables.
+The `obsura-init-db` service now runs:
+
+```bash
+obsura-api-migrate upgrade head
+```
+
+The API container expects the database to already be at the current Alembic
+head. In production mode it will fail fast if the schema is missing, unstamped,
+or behind.
 
 By default the API binds only to `127.0.0.1:8000`. After startup, access:
 
 - `http://localhost:8000/api/v1/health`
+- `http://localhost:8000/api/v1/ready`
+- `http://localhost:8000/api/v1/version`
 - `http://localhost:8000/docs`
 
 ## CI/CD
@@ -134,3 +161,49 @@ The Postman collection is designed to be chained:
   `configurationId`, `jobId`, and `findingId`
 - subsequent requests use those collection variables in URLs and example bodies
 - image transform responses also capture `outputFilePath` and `outputMediaUrl`
+
+## Validation and Limits
+
+The API now enforces a few runtime safety defaults that are relevant for real
+deployments:
+
+- `OBSURA_MAX_UPLOAD_BYTES` limits multipart file uploads
+- `OBSURA_MAX_IMAGE_PIXELS` limits image dimensions by total pixel count
+- image uploads must use a supported image MIME type
+- public API responses expose storage-root relative file references rather than
+  raw absolute filesystem paths
+
+Image review jobs retain source files by default so reviewed job exports can be
+re-run safely. Clients may explicitly disable that on image analysis requests by
+setting `persist_source_content` to `false`.
+
+## Database Migrations
+
+Local operator commands:
+
+```bash
+obsura-api-migrate upgrade head
+obsura-api-migrate current
+obsura-api-migrate check
+```
+
+Contributor workflow:
+
+```bash
+alembic -c alembic.ini revision --autogenerate -m "describe_change"
+alembic -c alembic.ini upgrade head
+```
+
+Production expectations:
+
+- set `DATABASE_URL` to PostgreSQL
+- run migrations explicitly before or during deploy
+- keep `OBSURA_AUTO_CREATE_SCHEMA=false`
+- if the database is missing a revision or behind the current head, API startup
+  and `/api/v1/ready` will fail clearly
+
+Compatibility note:
+
+- the initial baseline migration is idempotent on upgrade
+- that allows older bootstrap-created databases without an `alembic_version`
+  row to be reconciled by running `upgrade head`
