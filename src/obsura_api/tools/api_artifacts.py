@@ -19,6 +19,7 @@ COLLECTION_VARIABLES: list[tuple[str, str]] = [
     ("patternId", ""),
     ("entityId", ""),
     ("configurationId", ""),
+    ("bulkId", ""),
     ("jobId", ""),
     ("findingId", ""),
     ("patternIdsJson", "[]"),
@@ -34,6 +35,7 @@ PATH_VARIABLE_MAP = {
     "pattern_id": "patternId",
     "entity_id": "entityId",
     "configuration_id": "configurationId",
+    "bulk_id": "bulkId",
     "job_id": "jobId",
 }
 
@@ -138,6 +140,63 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
                 },
             }
         ]
+    },
+    ("POST", "/api/v1/bulk/text/analyze"): {
+        "title": "Bulk terminal safe-share review",
+        "content_type": "text",
+        "apply_builtins": True,
+        "pattern_ids": ["{{patternId}}"],
+        "custom_entity_ids": ["{{entityId}}"],
+        "configuration_ids": ["{{configurationId}}"],
+        "exact_values": ["root", "admin"],
+        "persist_source_content": True,
+        "items": [
+            {
+                "client_item_id": "snippet-1",
+                "title": "VPS login output",
+                "content": "ssh root@10.0.0.5",
+            },
+            {
+                "client_item_id": "snippet-2",
+                "title": "Internal URL sample",
+                "content": "curl https://internal.example.com/login",
+            },
+            {
+                "client_item_id": "snippet-3",
+                "title": "Intentional invalid item",
+                "content": "   ",
+            },
+        ],
+    },
+    ("POST", "/api/v1/bulk/jobs/{bulk_id}/review"): {
+        "jobs": [
+            {
+                "job_id": "{{jobId}}",
+                "decisions": [
+                    {
+                        "finding_id": "{{findingId}}",
+                        "decision": "approved",
+                    }
+                ],
+            }
+        ]
+    },
+    ("POST", "/api/v1/bulk/text/transform"): {
+        "bulk_id": "{{bulkId}}",
+        "job_overrides": [
+            {
+                "job_id": "{{jobId}}",
+                "content": "token=secret",
+                "finding_overrides": [
+                    {
+                        "finding_id": "{{findingId}}",
+                        "decision": "approved",
+                    }
+                ],
+            }
+        ],
+        "include_pending": False,
+        "persist_output": True,
     },
     ("POST", "/api/v1/workflows/text/analyze"): {
         "title": "Terminal safe-share review",
@@ -305,6 +364,27 @@ REQUEST_EXTRACTORS: dict[tuple[str, str], list[dict[str, Any]]] = {
         {"variable": "jobIdsJson", "paths": [["data", "__collect__", "id"]]},
         {"variable": "findingId", "paths": [["data", 0, "findings", 0, "id"]]},
         {"variable": "outputFilePath", "paths": [["data", 0, "outputs", 0, "output_file_path"]]},
+    ],
+    ("GET", "/api/v1/bulk/jobs"): [
+        {"variable": "bulkId", "paths": [["data", 0, "id"]]},
+    ],
+    ("GET", "/api/v1/bulk/jobs/{bulk_id}"): [
+        {"variable": "bulkId", "paths": [["data", "id"]]},
+        {"variable": "jobId", "paths": [["data", "items", 0, "job_id"]]},
+        {"variable": "jobIdsJson", "paths": [["data", "items", "__collect__", "job_id"]]},
+    ],
+    ("POST", "/api/v1/bulk/text/analyze"): [
+        {"variable": "bulkId", "paths": [["data", "id"]]},
+        {"variable": "jobId", "paths": [["data", "items", 0, "job_id"]]},
+        {"variable": "jobIdsJson", "paths": [["data", "items", "__collect__", "job_id"]]},
+    ],
+    ("POST", "/api/v1/bulk/jobs/{bulk_id}/review"): [
+        {"variable": "bulkId", "paths": [["data", "bulk_id"]]},
+        {"variable": "jobId", "paths": [["data", "items", 0, "job_id"]]},
+    ],
+    ("POST", "/api/v1/bulk/text/transform"): [
+        {"variable": "bulkId", "paths": [["data", "bulk_id"]]},
+        {"variable": "jobId", "paths": [["data", "items", 0, "job_id"]]},
     ],
     ("GET", "/api/v1/jobs/{job_id}"): [
         {"variable": "jobId", "paths": [["data", "id"]]},
@@ -493,6 +573,8 @@ def build_request_item(path: str, method: str, operation: dict[str, Any]) -> dic
         notes.append("Uses the `entityId` collection variable in the request URL.")
     if "{configuration_id}" in path:
         notes.append("Uses the `configurationId` collection variable in the request URL.")
+    if "{bulk_id}" in path:
+        notes.append("Uses the `bulkId` collection variable in the request URL.")
     if "{job_id}" in path:
         notes.append("Uses the `jobId` collection variable in the request URL.")
 
@@ -575,9 +657,11 @@ def build_postman_collection(openapi_document: dict[str, Any]) -> dict[str, Any]
                 "1. Set `baseUrl` to your target deployment.\n"
                 "2. Run create endpoints for patterns, entities, or configurations.\n"
                 "3. The collection automatically captures IDs such as `patternId`, "
-                "`configurationId`, `jobId`, and `findingId` from JSON responses.\n"
+                "`configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n"
                 "4. Follow the text or image workflow requests in order without manually copying IDs.\n"
-                "5. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing."
+                "5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n"
+                "6. Bulk text responses keep parent bulk state and per-item outcomes separate.\n"
+                "7. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing."
             ),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "_postman_id": "obsura-api-collection",

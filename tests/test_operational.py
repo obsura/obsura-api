@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from obsura_api.core.settings import Settings
+from obsura_api.db.migrations import get_head_revision
 from obsura_api.services.storage import StorageService
 
 
@@ -18,8 +19,9 @@ def test_ready_and_version_endpoints(client) -> None:
     assert version_body["data"]["name"] == "Obsura API"
     assert version_body["data"]["version"] == "0.1.0"
     assert version_body["data"]["database_backend"].startswith("sqlite")
-    assert version_body["data"]["schema_revision"] == "ebbb78f282b7"
-    assert version_body["data"]["schema_head"] == "ebbb78f282b7"
+    expected_head = get_head_revision("sqlite:///./example.db")
+    assert version_body["data"]["schema_revision"] == expected_head
+    assert version_body["data"]["schema_head"] == expected_head
 
 
 def test_storage_service_uses_safe_relative_references(tmp_path) -> None:

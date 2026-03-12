@@ -3,7 +3,7 @@
   "info": {
     "title": "Obsura API",
     "summary": "Review-first sanitization workflows, studio assets, and job orchestration for Obsura.",
-    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- reviewable jobs and run history\n- text-first and screenshot-first sanitization workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
+    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- persisted bulk text submissions that group many reviewable child jobs\n- reviewable jobs and run history\n- text-first and screenshot-first sanitization workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
     "contact": {
       "name": "Obsura",
       "url": "https://github.com/obsura"
@@ -79,6 +79,245 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponse_dict_str__str__"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk/text/analyze": {
+      "post": {
+        "tags": [
+          "bulk-jobs"
+        ],
+        "summary": "Analyze Bulk Text",
+        "description": "Analyze many text items, persist one bulk job, and create reviewable child jobs.",
+        "operationId": "analyze_bulk_text_api_v1_bulk_text_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTextAnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_BulkJobRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk/jobs": {
+      "get": {
+        "tags": [
+          "bulk-jobs"
+        ],
+        "summary": "List Bulk Jobs",
+        "description": "List persisted bulk text jobs with summary counts and status.",
+        "operationId": "list_bulk_jobs_api_v1_bulk_jobs_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_list_BulkJobSummaryRead__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk/jobs/{bulk_id}": {
+      "get": {
+        "tags": [
+          "bulk-jobs"
+        ],
+        "summary": "Get Bulk Job",
+        "description": "Fetch one persisted bulk text job in detail, including per-item outcomes.",
+        "operationId": "get_bulk_job_api_v1_bulk_jobs__bulk_id__get",
+        "parameters": [
+          {
+            "name": "bulk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Bulk Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_BulkJobRead_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk/jobs/{bulk_id}/review": {
+      "post": {
+        "tags": [
+          "bulk-jobs"
+        ],
+        "summary": "Review Bulk Job",
+        "description": "Apply review decisions across child jobs that belong to one bulk run.",
+        "operationId": "review_bulk_job_api_v1_bulk_jobs__bulk_id__review_post",
+        "parameters": [
+          {
+            "name": "bulk_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Bulk Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkJobReviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_BulkReviewResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bulk/text/transform": {
+      "post": {
+        "tags": [
+          "bulk-jobs"
+        ],
+        "summary": "Transform Bulk Text",
+        "description": "Transform text outputs across one persisted bulk run while preserving per-item outcomes.",
+        "operationId": "transform_bulk_text_api_v1_bulk_text_transform_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkTextTransformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_BulkTextTransformResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1212,6 +1451,168 @@
         "title": "ApiError",
         "description": "Unified error payload."
       },
+      "ApiResponse_BulkJobRead_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulkJobRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[BulkJobRead]"
+      },
+      "ApiResponse_BulkReviewResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulkReviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[BulkReviewResponse]"
+      },
+      "ApiResponse_BulkTextTransformResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BulkTextTransformResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[BulkTextTransformResponse]"
+      },
       "ApiResponse_ConfigurationRead_": {
         "properties": {
           "success": {
@@ -1648,6 +2049,64 @@
         ],
         "title": "ApiResponse[dict[str, str]]"
       },
+      "ApiResponse_list_BulkJobSummaryRead__": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BulkJobSummaryRead"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[list[BulkJobSummaryRead]]"
+      },
       "ApiResponse_list_ConfigurationRead__": {
         "properties": {
           "success": {
@@ -2008,6 +2467,916 @@
         ],
         "title": "BoundingBox",
         "description": "A region on an image or screenshot."
+      },
+      "BulkJobItemRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "item_index": {
+            "type": "integer",
+            "title": "Item Index"
+          },
+          "client_item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Item Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobItemStatus"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "job_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "description": "Finding decision summary for the child job using the standard total/pending/approved/rejected shape."
+          },
+          "output_count": {
+            "type": "integer",
+            "title": "Output Count",
+            "description": "Stored output count for the child job.",
+            "default": 0
+          },
+          "output_available": {
+            "type": "boolean",
+            "title": "Output Available",
+            "description": "Whether the child job currently has at least one stored output.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "item_index",
+          "status"
+        ],
+        "title": "BulkJobItemRead",
+        "description": "One stored per-item result inside a bulk job."
+      },
+      "BulkJobItemStatus": {
+        "type": "string",
+        "enum": [
+          "failed",
+          "succeeded",
+          "reviewed",
+          "transformed"
+        ],
+        "title": "BulkJobItemStatus"
+      },
+      "BulkJobRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobStatus"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count",
+            "description": "Number of submitted items in the bulk run."
+          },
+          "success_count": {
+            "type": "integer",
+            "title": "Success Count",
+            "description": "Number of items that produced persisted child jobs during bulk analyze."
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count",
+            "description": "Number of items that failed during bulk analyze and did not produce child jobs."
+          },
+          "reviewed_item_count": {
+            "type": "integer",
+            "title": "Reviewed Item Count",
+            "description": "Number of child jobs that currently have reviewed findings.",
+            "default": 0
+          },
+          "transformed_item_count": {
+            "type": "integer",
+            "title": "Transformed Item Count",
+            "description": "Number of child jobs with at least one persisted text output.",
+            "default": 0
+          },
+          "output_count": {
+            "type": "integer",
+            "title": "Output Count",
+            "description": "Total number of stored outputs across all child jobs in this bulk run.",
+            "default": 0
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BulkJobItemRead"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "updated_at",
+          "content_type",
+          "status",
+          "item_count",
+          "success_count",
+          "failure_count"
+        ],
+        "title": "BulkJobRead",
+        "description": "Detailed persisted bulk job with ordered per-item results."
+      },
+      "BulkJobReviewEntry": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Job Id"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/JobReviewDecisionInput"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Decisions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id",
+          "decisions"
+        ],
+        "title": "BulkJobReviewEntry",
+        "description": "Review decisions targeting one child job inside a bulk run."
+      },
+      "BulkJobReviewRequest": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/BulkJobReviewEntry"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Jobs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "jobs"
+        ],
+        "title": "BulkJobReviewRequest",
+        "description": "Bulk review request for one persisted bulk run."
+      },
+      "BulkJobStatus": {
+        "type": "string",
+        "enum": [
+          "completed",
+          "partial_failure",
+          "failed",
+          "partially_reviewed",
+          "reviewed",
+          "partially_transformed",
+          "transformed"
+        ],
+        "title": "BulkJobStatus"
+      },
+      "BulkJobSummaryRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobStatus"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count",
+            "description": "Number of submitted items in the bulk run."
+          },
+          "success_count": {
+            "type": "integer",
+            "title": "Success Count",
+            "description": "Number of items that produced persisted child jobs during bulk analyze."
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count",
+            "description": "Number of items that failed during bulk analyze and did not produce child jobs."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "updated_at",
+          "content_type",
+          "status",
+          "item_count",
+          "success_count",
+          "failure_count"
+        ],
+        "title": "BulkJobSummaryRead",
+        "description": "List/detail summary for a persisted bulk job."
+      },
+      "BulkOperationItemStatus": {
+        "type": "string",
+        "enum": [
+          "succeeded",
+          "failed",
+          "skipped"
+        ],
+        "title": "BulkOperationItemStatus"
+      },
+      "BulkOperationKind": {
+        "type": "string",
+        "enum": [
+          "review",
+          "transform"
+        ],
+        "title": "BulkOperationKind"
+      },
+      "BulkReviewItemResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "item_index": {
+            "type": "integer",
+            "title": "Item Index"
+          },
+          "client_item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Item Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "operation_status": {
+            "$ref": "#/components/schemas/BulkOperationItemStatus"
+          },
+          "bulk_item_status": {
+            "$ref": "#/components/schemas/BulkJobItemStatus"
+          },
+          "job_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "description": "Finding decision summary for the current child job state."
+          },
+          "output_count": {
+            "type": "integer",
+            "title": "Output Count",
+            "description": "Stored output count for the child job.",
+            "default": 0
+          },
+          "output_available": {
+            "type": "boolean",
+            "title": "Output Available",
+            "description": "Whether the child job currently has at least one stored output.",
+            "default": false
+          },
+          "decision_count": {
+            "type": "integer",
+            "title": "Decision Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "item_index",
+          "operation_status",
+          "bulk_item_status"
+        ],
+        "title": "BulkReviewItemResult",
+        "description": "Per-item result for bulk review."
+      },
+      "BulkReviewResponse": {
+        "properties": {
+          "bulk_id": {
+            "type": "string",
+            "title": "Bulk Id"
+          },
+          "action": {
+            "$ref": "#/components/schemas/BulkOperationKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobStatus"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count",
+            "description": "Total items in the targeted bulk run."
+          },
+          "success_count": {
+            "type": "integer",
+            "title": "Success Count",
+            "description": "Items successfully processed by this action."
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count",
+            "description": "Items that failed during this action."
+          },
+          "skipped_count": {
+            "type": "integer",
+            "title": "Skipped Count",
+            "description": "Items intentionally left untouched by this action."
+          },
+          "reviewed_item_count": {
+            "type": "integer",
+            "title": "Reviewed Item Count",
+            "description": "Current reviewed child job count after this action completes.",
+            "default": 0
+          },
+          "transformed_item_count": {
+            "type": "integer",
+            "title": "Transformed Item Count",
+            "description": "Current transformed child job count after this action completes.",
+            "default": 0
+          },
+          "output_count": {
+            "type": "integer",
+            "title": "Output Count",
+            "description": "Current stored output count across the bulk run after this action completes.",
+            "default": 0
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BulkReviewItemResult"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bulk_id",
+          "action",
+          "status",
+          "item_count",
+          "success_count",
+          "failure_count",
+          "skipped_count"
+        ],
+        "title": "BulkReviewResponse",
+        "description": "Bulk review response."
+      },
+      "BulkTextAnalyzeItemInput": {
+        "properties": {
+          "client_item_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Item Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BulkTextAnalyzeItemInput",
+        "description": "One submitted text item inside a bulk analyze request."
+      },
+      "BulkTextAnalyzeRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "text"
+          },
+          "apply_builtins": {
+            "type": "boolean",
+            "title": "Apply Builtins",
+            "default": true
+          },
+          "pattern_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Custom Entity Ids"
+          },
+          "configuration_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Configuration Ids"
+          },
+          "exact_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exact Values"
+          },
+          "default_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persist_source_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persist Source Content"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTextAnalyzeItemInput"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "BulkTextAnalyzeRequest",
+        "description": "Bulk text analyze request with shared options and ordered items."
+      },
+      "BulkTextTransformItemResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "item_index": {
+            "type": "integer",
+            "title": "Item Index"
+          },
+          "client_item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Item Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "operation_status": {
+            "$ref": "#/components/schemas/BulkOperationItemStatus"
+          },
+          "bulk_item_status": {
+            "$ref": "#/components/schemas/BulkJobItemStatus"
+          },
+          "job_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "description": "Finding decision summary for the current child job state."
+          },
+          "output_count": {
+            "type": "integer",
+            "title": "Output Count",
+            "description": "Stored output count for the child job.",
+            "default": 0
+          },
+          "output_available": {
+            "type": "boolean",
+            "title": "Output Available",
+            "description": "Whether the child job currently has at least one stored output.",
+            "default": false
+          },
+          "replacement_count": {
+            "type": "integer",
+            "title": "Replacement Count",
+            "default": 0
+          },
+          "output_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "item_index",
+          "operation_status",
+          "bulk_item_status"
+        ],
+        "title": "BulkTextTransformItemResult",
+        "description": "Per-item result for bulk transform."
+      },
+      "BulkTextTransformOverride": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Job Id"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "finding_overrides": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOverride"
+            },
+            "type": "array",
+            "title": "Finding Overrides"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id"
+        ],
+        "title": "BulkTextTransformOverride",
+        "description": "Optional override for transforming one child job inside a bulk run."
+      },
+      "BulkTextTransformRequest": {
+        "properties": {
+          "bulk_id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Bulk Id"
+          },
+          "job_overrides": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTextTransformOverride"
+            },
+            "type": "array",
+            "title": "Job Overrides"
+          },
+          "include_pending": {
+            "type": "boolean",
+            "title": "Include Pending",
+            "default": false
+          },
+          "default_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persist_output": {
+            "type": "boolean",
+            "title": "Persist Output",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bulk_id"
+        ],
+        "title": "BulkTextTransformRequest",
+        "description": "Bulk text transform request for a persisted bulk run."
+      },
+      "BulkTextTransformResponse": {
+        "properties": {
+          "bulk_id": {
+            "type": "string",
+            "title": "Bulk Id"
+          },
+          "action": {
+            "$ref": "#/components/schemas/BulkOperationKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BulkJobStatus"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count",
+            "description": "Total items in the targeted bulk run."
+          },
+          "success_count": {
+            "type": "integer",
+            "title": "Success Count",
+            "description": "Items successfully processed by this action."
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count",
+            "description": "Items that failed during this action."
+          },
+          "skipped_count": {
+            "type": "integer",
+            "title": "Skipped Count",
+            "description": "Items intentionally left untouched by this action."
+          },
+          "reviewed_item_count": {
+            "type": "integer",
+            "title": "Reviewed Item Count",
+            "description": "Current reviewed child job count after this action completes.",
+            "default": 0
+          },
+          "transformed_item_count": {
+            "type": "integer",
+            "title": "Transformed Item Count",
+            "description": "Current transformed child job count after this action completes.",
+            "default": 0
+          },
+          "output_count": {
+            "type": "integer",
+            "title": "Output Count",
+            "description": "Current stored output count across the bulk run after this action completes.",
+            "default": 0
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BulkTextTransformItemResult"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bulk_id",
+          "action",
+          "status",
+          "item_count",
+          "success_count",
+          "failure_count",
+          "skipped_count"
+        ],
+        "title": "BulkTextTransformResponse",
+        "description": "Bulk text transform response."
       },
       "ConfigurationCreate": {
         "properties": {
@@ -3095,7 +4464,8 @@
                 "type": "null"
               }
             ],
-            "title": "Stored Input Path"
+            "title": "Stored Input Path",
+            "description": "Storage-relative reference for a persisted image input."
           },
           "stored_output_path": {
             "anyOf": [
@@ -3106,7 +4476,8 @@
                 "type": "null"
               }
             ],
-            "title": "Stored Output Path"
+            "title": "Stored Output Path",
+            "description": "Storage-relative reference for a persisted image output."
           },
           "media_url": {
             "anyOf": [
@@ -3117,7 +4488,8 @@
                 "type": "null"
               }
             ],
-            "title": "Media Url"
+            "title": "Media Url",
+            "description": "Media URL derived from the storage-relative output reference."
           },
           "summary": {
             "additionalProperties": {
@@ -3178,7 +4550,8 @@
                 "type": "null"
               }
             ],
-            "title": "Output File Path"
+            "title": "Output File Path",
+            "description": "Storage-relative reference for a persisted non-text output."
           },
           "media_url": {
             "anyOf": [
@@ -3189,7 +4562,8 @@
                 "type": "null"
               }
             ],
-            "title": "Media Url"
+            "title": "Media Url",
+            "description": "Media URL derived from the storage-relative output reference."
           },
           "metadata": {
             "additionalProperties": {
@@ -3279,7 +4653,8 @@
                 "type": "null"
               }
             ],
-            "title": "Source File Path"
+            "title": "Source File Path",
+            "description": "Storage-relative reference for a persisted non-text input."
           },
           "pattern_ids": {
             "items": {
@@ -4373,6 +5748,10 @@
     {
       "name": "health",
       "description": "Service health and platform metadata endpoints."
+    },
+    {
+      "name": "bulk-jobs",
+      "description": "Review-first bulk text submissions that group multiple persisted child jobs under one parent run."
     },
     {
       "name": "studio",

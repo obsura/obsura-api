@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     image_output_format: str = "PNG"
     max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
     max_image_pixels: int = Field(default=20_000_000, ge=1)
+    max_bulk_text_items: int = Field(default=50, ge=1, le=500)
+    max_bulk_text_item_characters: int = Field(default=100_000, ge=1)
+    max_bulk_text_total_characters: int = Field(default=1_000_000, ge=1)
 
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":

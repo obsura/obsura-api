@@ -16,7 +16,7 @@ def test_create_alembic_config_uses_packaged_scripts() -> None:
     assert config.get_main_option("script_location").replace("\\", "/").endswith(
         "src/obsura_api/db/alembic"
     )
-    assert get_head_revision("sqlite:///./example.db") == "ebbb78f282b7"
+    assert get_head_revision("sqlite:///./example.db") == "7853e355f826"
 
 
 def test_ensure_database_schema_rejects_wrong_revision(tmp_path) -> None:
@@ -37,3 +37,24 @@ def test_ensure_database_schema_rejects_wrong_revision(tmp_path) -> None:
 
     with pytest.raises(RuntimeError, match="Current revision: deadbeef"):
         session_module.ensure_database_schema(engine, settings=settings)
+
+
+def test_bulk_job_tables_exist_after_upgrade(tmp_path) -> None:
+    settings = Settings(
+        database_url=f"sqlite:///{(tmp_path / 'bulk-schema.db').as_posix()}",
+        auto_create_schema=False,
+        _env_file=None,
+    )
+    engine = session_module.create_engine_from_settings(settings)
+    session_module.upgrade_database_from_settings(settings)
+
+    with engine.connect() as connection:
+        table_names = {
+            row[0]
+            for row in connection.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table'")
+            )
+        }
+
+    assert "bulk_jobs" in table_names
+    assert "bulk_job_items" in table_names

@@ -16,8 +16,14 @@ class JobOutputRecord(TimestampedModel):
     job_id: str
     content_type: ContentType
     output_text: str | None = None
-    output_file_path: str | None = None
-    media_url: str | None = None
+    output_file_path: str | None = Field(
+        default=None,
+        description="Storage-relative reference for a persisted non-text output.",
+    )
+    media_url: str | None = Field(
+        default=None,
+        description="Media URL derived from the storage-relative output reference.",
+    )
     metadata: dict[str, str | int | bool | list[str]] = Field(default_factory=dict)
 
 
@@ -28,7 +34,10 @@ class JobRead(TimestampedModel):
     status: JobStatus
     content_type: ContentType
     source_text: str | None = None
-    source_file_path: str | None = None
+    source_file_path: str | None = Field(
+        default=None,
+        description="Storage-relative reference for a persisted non-text input.",
+    )
     pattern_ids: list[str] = Field(default_factory=list)
     custom_entity_ids: list[str] = Field(default_factory=list)
     configuration_ids: list[str] = Field(default_factory=list)

@@ -11,6 +11,8 @@ This repository currently provides:
 - a FastAPI application with clear domain and route boundaries
 - persistent studio assets for patterns, custom entities, and reusable
   configurations
+- persisted bulk text submissions that group multiple reviewable child jobs
+- bulk review and bulk text transform across one persisted bulk run
 - built-in, custom, exact-value, and manual text detection
 - reviewable job history and finding decisions
 - text transformation with semantic, custom, partial-mask, and stable-alias
@@ -80,6 +82,11 @@ Current operational endpoints:
 - `GET /api/v1/health` for liveness
 - `GET /api/v1/ready` for dependency-aware readiness
 - `GET /api/v1/version` for runtime version and backend metadata
+- `POST /api/v1/bulk/text/analyze` for review-first bulk text analysis
+- `GET /api/v1/bulk/jobs` and `GET /api/v1/bulk/jobs/{bulk_id}` for bulk run
+  inspection
+- `POST /api/v1/bulk/jobs/{bulk_id}/review` for bulk finding review
+- `POST /api/v1/bulk/text/transform` for review-first bulk text output generation
 
 ## Docker
 
@@ -160,6 +167,8 @@ The Postman collection is designed to be chained:
 - create requests automatically capture IDs such as `patternId`, `entityId`,
   `configurationId`, `jobId`, and `findingId`
 - subsequent requests use those collection variables in URLs and example bodies
+- bulk requests also capture `bulkId` so the analyze, review, and transform flow
+  can be exercised without manual ID copying
 - image transform responses also capture `outputFilePath` and `outputMediaUrl`
 
 ## Validation and Limits
@@ -169,6 +178,10 @@ deployments:
 
 - `OBSURA_MAX_UPLOAD_BYTES` limits multipart file uploads
 - `OBSURA_MAX_IMAGE_PIXELS` limits image dimensions by total pixel count
+- `OBSURA_MAX_BULK_TEXT_ITEMS` limits items per bulk text request
+- `OBSURA_MAX_BULK_TEXT_ITEM_CHARACTERS` limits characters per bulk text item
+- `OBSURA_MAX_BULK_TEXT_TOTAL_CHARACTERS` limits the combined payload size for
+  bulk text analysis
 - image uploads must use a supported image MIME type
 - public API responses expose storage-root relative file references rather than
   raw absolute filesystem paths
@@ -176,6 +189,30 @@ deployments:
 Image review jobs retain source files by default so reviewed job exports can be
 re-run safely. Clients may explicitly disable that on image analysis requests by
 setting `persist_source_content` to `false`.
+
+## Bulk Text Flow
+
+The current bulk implementation is text-only and review-first.
+
+Recommended order:
+
+1. `POST /api/v1/bulk/text/analyze`
+2. `GET /api/v1/jobs/{job_id}` for any child jobs whose findings you want to inspect
+3. `POST /api/v1/bulk/jobs/{bulk_id}/review`
+4. `POST /api/v1/bulk/text/transform`
+
+Contract notes:
+
+- bulk runs are persistent parent resources; valid items create persistent child
+  jobs
+- bulk run `success_count` and `failure_count` describe analyze-time submission
+  validity, not review/transform action counts
+- bulk review and bulk transform responses return their own per-action
+  `success_count`, `failure_count`, and `skipped_count`
+- finding summaries use the standard `total`, `pending`, `approved`, and
+  `rejected` shape across single-job and bulk responses
+- stored file paths in API responses are storage-relative references, not host
+  filesystem paths
 
 ## Database Migrations
 

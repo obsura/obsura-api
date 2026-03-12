@@ -64,9 +64,36 @@ class JobStatus(str, Enum):
     TRANSFORMED = "transformed"
 
 
+class BulkJobStatus(str, Enum):
+    COMPLETED = "completed"
+    PARTIAL_FAILURE = "partial_failure"
+    FAILED = "failed"
+    PARTIALLY_REVIEWED = "partially_reviewed"
+    REVIEWED = "reviewed"
+    PARTIALLY_TRANSFORMED = "partially_transformed"
+    TRANSFORMED = "transformed"
+
+
+class BulkJobItemStatus(str, Enum):
+    FAILED = "failed"
+    SUCCEEDED = "succeeded"
+    REVIEWED = "reviewed"
+    TRANSFORMED = "transformed"
+
+
+class BulkOperationKind(str, Enum):
+    REVIEW = "review"
+    TRANSFORM = "transform"
+
+
+class BulkOperationItemStatus(str, Enum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+
 class SearchResultKind(str, Enum):
     PATTERN = "pattern"
     CUSTOM_ENTITY = "custom_entity"
     CONFIGURATION = "configuration"
     JOB = "job"
-

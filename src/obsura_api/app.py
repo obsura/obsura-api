@@ -38,6 +38,10 @@ OPENAPI_TAGS = [
         "description": "Service health and platform metadata endpoints.",
     },
     {
+        "name": "bulk-jobs",
+        "description": "Review-first bulk text submissions that group multiple persisted child jobs under one parent run.",
+    },
+    {
         "name": "studio",
         "description": "Persistent studio assets such as patterns, custom entities, reusable packs, profiles, and presets.",
     },
@@ -60,6 +64,7 @@ Obsura API is the review-first workflow and orchestration layer for Obsura.
 
 The API supports:
 - persistent studio assets for custom detection and reusable configurations
+- persisted bulk text submissions that group many reviewable child jobs
 - reviewable jobs and run history
 - text-first and screenshot-first sanitization workflows
 - transformation behavior beyond plain placeholder replacement

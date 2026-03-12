@@ -195,9 +195,18 @@ class ImageWorkflowResponse(BaseModel):
 
     job_id: str | None = None
     findings: list[FindingRecord]
-    stored_input_path: str | None = None
-    stored_output_path: str | None = None
-    media_url: str | None = None
+    stored_input_path: str | None = Field(
+        default=None,
+        description="Storage-relative reference for a persisted image input.",
+    )
+    stored_output_path: str | None = Field(
+        default=None,
+        description="Storage-relative reference for a persisted image output.",
+    )
+    media_url: str | None = Field(
+        default=None,
+        description="Media URL derived from the storage-relative output reference.",
+    )
     summary: dict[str, int]
 
 

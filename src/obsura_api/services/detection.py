@@ -173,7 +173,7 @@ class TextDetectionService:
             custom_entity_ids,
             configuration_ids,
             default_transformation,
-        ) = self._resolve_detection_inputs(
+        ) = self.resolve_detection_context(
             content_type=request.content_type,
             pattern_ids=request.pattern_ids,
             custom_entity_ids=request.custom_entity_ids,
@@ -196,7 +196,7 @@ class TextDetectionService:
             persist_source = request.persist_source_content
             if persist_source is None:
                 persist_source = self.settings.retain_source_content_by_default
-            job_id = self._persist_job(
+            job_id = self.persist_analyzed_job(
                 title=request.title,
                 content_type=request.content_type,
                 content=request.content if persist_source else None,
@@ -297,7 +297,7 @@ class TextDetectionService:
     ) -> tuple[list[object], list[object], TransformationRule | None]:
         """Resolve reusable detection inputs for transient text analysis."""
 
-        patterns, entities, _, _, _, resolved_default = self._resolve_detection_inputs(
+        patterns, entities, _, _, _, resolved_default = self.resolve_detection_context(
             content_type=content_type,
             pattern_ids=pattern_ids,
             custom_entity_ids=custom_entity_ids,
@@ -306,7 +306,7 @@ class TextDetectionService:
         )
         return patterns, entities, resolved_default
 
-    def _resolve_detection_inputs(
+    def resolve_detection_context(
         self,
         *,
         content_type: ContentType,
@@ -512,6 +512,7 @@ class TextDetectionService:
         custom_entity_ids: list[str],
         configuration_ids: list[str],
         findings: list[FindingRecord],
+        commit: bool = True,
     ) -> str:
         job = Job(
             title=title,
@@ -551,5 +552,31 @@ class TextDetectionService:
             finding.id = row.id
             finding.job_id = job.id
 
-        self.session.commit()
+        if commit:
+            self.session.commit()
         return job.id
+
+    def persist_analyzed_job(
+        self,
+        *,
+        title: str | None,
+        content_type: ContentType,
+        content: str | None,
+        pattern_ids: list[str],
+        custom_entity_ids: list[str],
+        configuration_ids: list[str],
+        findings: list[FindingRecord],
+        commit: bool = True,
+    ) -> str:
+        """Persist a detected text workflow job and its findings."""
+
+        return self._persist_job(
+            title=title,
+            content_type=content_type,
+            content=content,
+            pattern_ids=pattern_ids,
+            custom_entity_ids=custom_entity_ids,
+            configuration_ids=configuration_ids,
+            findings=findings,
+            commit=commit,
+        )

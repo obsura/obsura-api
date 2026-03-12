@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Enum, ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, Enum, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from obsura_api.db.base import Base, TimestampedUUIDMixin
 from obsura_api.domain.enums import (
+    BulkJobItemStatus,
+    BulkJobStatus,
     ConfigurationKind,
     ContentType,
     FindingKind,
@@ -84,6 +86,25 @@ class StudioConfiguration(TimestampedUUIDMixin, Base):
     )
 
 
+class BulkJob(TimestampedUUIDMixin, Base):
+    """Persisted parent resource for one ordered bulk text submission."""
+
+    __tablename__ = "bulk_jobs"
+
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    content_type: Mapped[ContentType] = mapped_column(Enum(ContentType), nullable=False)
+    status: Mapped[BulkJobStatus] = mapped_column(Enum(BulkJobStatus), index=True, nullable=False)
+    item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    success_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    items: Mapped[list["BulkJobItem"]] = relationship(
+        back_populates="bulk_job",
+        cascade="all, delete-orphan",
+        order_by="BulkJobItem.item_index",
+    )
+
+
 class Job(TimestampedUUIDMixin, Base):
     """Persisted workflow job."""
 
@@ -107,6 +128,36 @@ class Job(TimestampedUUIDMixin, Base):
         back_populates="job",
         cascade="all, delete-orphan",
     )
+    bulk_item: Mapped["BulkJobItem | None"] = relationship(back_populates="job")
+
+
+class BulkJobItem(TimestampedUUIDMixin, Base):
+    """Stored result for one item inside a bulk text submission."""
+
+    __tablename__ = "bulk_job_items"
+    __table_args__ = (
+        UniqueConstraint("bulk_job_id", "item_index", name="uq_bulk_job_items_bulk_job_id_item_index"),
+    )
+
+    bulk_job_id: Mapped[str] = mapped_column(ForeignKey("bulk_jobs.id"), index=True, nullable=False)
+    item_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    client_item_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    status: Mapped[BulkJobItemStatus] = mapped_column(
+        Enum(BulkJobItemStatus),
+        nullable=False,
+    )
+    job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("jobs.id"),
+        index=True,
+        nullable=True,
+        unique=True,
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[dict[str, int]] = mapped_column(JSON, default=dict, nullable=False)
+
+    bulk_job: Mapped[BulkJob] = relationship(back_populates="items")
+    job: Mapped[Job | None] = relationship(back_populates="bulk_item")
 
 
 class JobFinding(TimestampedUUIDMixin, Base):

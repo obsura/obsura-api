@@ -119,23 +119,21 @@ class JobService:
         )
 
     def get_job(self, job_id: str) -> JobRead:
-        job = self.session.scalar(
-            select(Job)
-            .where(Job.id == job_id)
-            .options(selectinload(Job.findings), selectinload(Job.outputs)),
-        )
-        if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+        job = self._load_job_with_relations(job_id)
         return job_to_schema(job, storage=self.storage)
 
     def review_job(self, job_id: str, payload: JobReviewRequest) -> JobRead:
-        job = self.session.scalar(
-            select(Job)
-            .where(Job.id == job_id)
-            .options(selectinload(Job.findings), selectinload(Job.outputs)),
-        )
-        if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+        job = self._load_job_with_relations(job_id)
+        return self.apply_review_to_job(job, payload)
+
+    def apply_review_to_job(
+        self,
+        job: Job,
+        payload: JobReviewRequest,
+        *,
+        commit: bool = True,
+    ) -> JobRead:
+        """Apply review decisions to a loaded job."""
 
         by_id = {finding.id: finding for finding in job.findings}
         for decision in payload.decisions:
@@ -152,6 +150,17 @@ class JobService:
         job.status = JobStatus.REVIEWED
         findings = [finding_to_schema(item) for item in job.findings]
         job.summary = summarize_findings(findings)
-        self.session.commit()
-        self.session.refresh(job)
-        return self.get_job(job.id)
+        if commit:
+            self.session.commit()
+            self.session.refresh(job)
+        return job_to_schema(job, storage=self.storage)
+
+    def _load_job_with_relations(self, job_id: str) -> Job:
+        job = self.session.scalar(
+            select(Job)
+            .where(Job.id == job_id)
+            .options(selectinload(Job.findings), selectinload(Job.outputs)),
+        )
+        if job is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+        return job

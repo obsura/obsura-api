@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
 from obsura_api.db.models import Job, JobOutput
@@ -43,9 +45,40 @@ class TextTransformationService:
                 detail="`job_id` is required for direct transform requests",
             )
 
-        job = self.session.get(Job, request.job_id)
+        job = self._load_text_job(str(request.job_id))
+        return self.transform_loaded_job(job, request)
+
+    def persist_text_output(
+        self,
+        *,
+        job_id: str,
+        output_text: str,
+        replacement_count: int,
+    ) -> None:
+        """Persist a text output for an existing job."""
+
+        job = self.session.get(Job, job_id)
         if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+            return
+        job.status = JobStatus.TRANSFORMED
+        output = JobOutput(
+            job_id=job.id,
+            content_type=job.content_type,
+            output_text=output_text,
+            extra_data={"replacement_count": replacement_count},
+        )
+        self.session.add(output)
+        self.session.commit()
+
+    def transform_loaded_job(
+        self,
+        job: Job,
+        request: TextTransformRequest,
+        *,
+        commit: bool = True,
+    ) -> TextTransformResponse:
+        """Transform a loaded text job."""
+
         if job.content_type not in {ContentType.TEXT, ContentType.STRUCTURED_TEXT}:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
@@ -81,7 +114,8 @@ class TextTransformationService:
                 extra_data={"replacement_count": len(replacements)},
             )
             self.session.add(output)
-            self.session.commit()
+            if commit:
+                self.session.commit()
 
         return TextTransformResponse(
             job_id=job.id,
@@ -89,28 +123,6 @@ class TextTransformationService:
             replacements=replacements,
             summary={"replacement_count": len(replacements)},
         )
-
-    def persist_text_output(
-        self,
-        *,
-        job_id: str,
-        output_text: str,
-        replacement_count: int,
-    ) -> None:
-        """Persist a text output for an existing job."""
-
-        job = self.session.get(Job, job_id)
-        if job is None:
-            return
-        job.status = JobStatus.TRANSFORMED
-        output = JobOutput(
-            job_id=job.id,
-            content_type=job.content_type,
-            output_text=output_text,
-            extra_data={"replacement_count": replacement_count},
-        )
-        self.session.add(output)
-        self.session.commit()
 
     def apply_findings(
         self,
@@ -252,3 +264,13 @@ class TextTransformationService:
             return alias_map[key]
 
         return rule.placeholder or f"[{normalize_token(finding.entity_type)}]"
+
+    def _load_text_job(self, job_id: str) -> Job:
+        job = self.session.scalar(
+            select(Job)
+            .where(Job.id == job_id)
+            .options(selectinload(Job.findings), selectinload(Job.outputs)),
+        )
+        if job is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+        return job

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Obsura API",
-    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text or image workflow requests in order without manually copying IDs.\n5. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing.",
+    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text or image workflow requests in order without manually copying IDs.\n5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n6. Bulk text responses keep parent bulk state and per-item outcomes separate.\n7. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "obsura-api-collection"
   },
@@ -38,6 +38,11 @@
     },
     {
       "key": "configurationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bulkId",
       "value": "",
       "type": "string"
     },
@@ -169,6 +174,537 @@
             }
           },
           "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bulk Jobs",
+      "description": "Review-first bulk text submissions that group multiple persisted child jobs under one parent run.",
+      "item": [
+        {
+          "name": "Analyze Bulk Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Analyze Bulk Text\n\nAnalyze many text items, persist one bulk job, and create reviewable child jobs.\n\nCollection helpers:\n- Automatically updates collection variables: bulkId, jobId, jobIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bulk/text/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bulk",
+                "text",
+                "analyze"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Bulk terminal safe-share review\",\n  \"content_type\": \"text\",\n  \"apply_builtins\": true,\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"exact_values\": [\n    \"root\",\n    \"admin\"\n  ],\n  \"persist_source_content\": true,\n  \"items\": [\n    {\n      \"client_item_id\": \"snippet-1\",\n      \"title\": \"VPS login output\",\n      \"content\": \"ssh root@10.0.0.5\"\n    },\n    {\n      \"client_item_id\": \"snippet-2\",\n      \"title\": \"Internal URL sample\",\n      \"content\": \"curl https://internal.example.com/login\"\n    },\n    {\n      \"client_item_id\": \"snippet-3\",\n      \"title\": \"Intentional invalid item\",\n      \"content\": \"   \"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"bulkId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"items\",\n        0,\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"items\",\n        \"__collect__\",\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Bulk Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "List Bulk Jobs\n\nList persisted bulk text jobs with summary counts and status.\n\nCollection helpers:\n- Automatically updates collection variables: bulkId.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bulk/jobs?page={{page}}&page_size={{page_size}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bulk",
+                "jobs"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "{{page}}",
+                  "description": ""
+                },
+                {
+                  "key": "page_size",
+                  "value": "{{page_size}}",
+                  "description": ""
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"bulkId\",\n    \"paths\": [\n      [\n        \"data\",\n        0,\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Bulk Job",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Get Bulk Job\n\nFetch one persisted bulk text job in detail, including per-item outcomes.\n\nCollection helpers:\n- Automatically updates collection variables: bulkId, jobId, jobIdsJson.\n- Uses the `bulkId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bulk/jobs/{{bulkId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bulk",
+                "jobs",
+                "{{bulkId}}"
+              ],
+              "query": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"bulkId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"items\",\n        0,\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"items\",\n        \"__collect__\",\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review Bulk Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Review Bulk Job\n\nApply review decisions across child jobs that belong to one bulk run.\n\nCollection helpers:\n- Automatically updates collection variables: bulkId, jobId.\n- Uses the `bulkId` collection variable in the request URL.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bulk/jobs/{{bulkId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bulk",
+                "jobs",
+                "{{bulkId}}",
+                "review"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobs\": [\n    {\n      \"job_id\": \"{{jobId}}\",\n      \"decisions\": [\n        {\n          \"finding_id\": \"{{findingId}}\",\n          \"decision\": \"approved\"\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"bulkId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"bulk_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"items\",\n        0,\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Bulk Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Bulk Text\n\nTransform text outputs across one persisted bulk run while preserving per-item outcomes.\n\nCollection helpers:\n- Automatically updates collection variables: bulkId, jobId.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bulk/text/transform",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "bulk",
+                "text",
+                "transform"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bulk_id\": \"{{bulkId}}\",\n  \"job_overrides\": [\n    {\n      \"job_id\": \"{{jobId}}\",\n      \"content\": \"token=secret\",\n      \"finding_overrides\": [\n        {\n          \"finding_id\": \"{{findingId}}\",\n          \"decision\": \"approved\"\n        }\n      ]\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"bulkId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"bulk_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"items\",\n        0,\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

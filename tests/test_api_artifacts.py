@@ -17,7 +17,28 @@ def test_postman_collection_uses_chained_variables() -> None:
     collection = build_postman_collection(app.openapi())
 
     variables = {item["key"] for item in collection["variable"]}
-    assert {"baseUrl", "patternId", "configurationId", "jobId", "findingId"} <= variables
+    assert {"baseUrl", "patternId", "configurationId", "bulkId", "jobId", "findingId"} <= variables
+
+    bulk_folder = next(item for item in collection["item"] if item["name"] == "Bulk Jobs")
+    bulk_analyze_request = next(
+        item for item in bulk_folder["item"] if item["name"] == "Analyze Bulk Text"
+    )
+    assert "{{patternId}}" in bulk_analyze_request["request"]["body"]["raw"]
+    assert "{{bulkId}}" not in bulk_analyze_request["request"]["body"]["raw"]
+    assert bulk_analyze_request["event"]
+
+    bulk_review_request = next(
+        item for item in bulk_folder["item"] if item["name"] == "Review Bulk Job"
+    )
+    assert "{{bulkId}}" in bulk_review_request["request"]["url"]["raw"]
+    assert "{{jobId}}" in bulk_review_request["request"]["body"]["raw"]
+    assert "{{findingId}}" in bulk_review_request["request"]["body"]["raw"]
+
+    bulk_transform_request = next(
+        item for item in bulk_folder["item"] if item["name"] == "Transform Bulk Text"
+    )
+    assert "{{bulkId}}" in bulk_transform_request["request"]["body"]["raw"]
+    assert "{{jobId}}" in bulk_transform_request["request"]["body"]["raw"]
 
     jobs_folder = next(item for item in collection["item"] if item["name"] == "Jobs")
     get_job_request = next(
