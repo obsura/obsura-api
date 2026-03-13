@@ -1,93 +1,52 @@
-name: obsura
-
-x-default-logging: &default-logging
-  driver: json-file
-  options:
-    max-size: "10m"
-    max-file: "3"
-
-x-obsura-env: &obsura-env
-  env_file:
-    - .env
-
 services:
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:17-alpine}
-    container_name: obsura-postgres
     restart: unless-stopped
-    shm_size: 256mb
-    stop_grace_period: 30s
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        - CMD-SHELL
-        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
-    networks:
-      - obsura
-    logging: *default-logging
 
   obsura-init-db:
-    <<: *obsura-env
     image: ${OBSURA_API_IMAGE:?OBSURA_API_IMAGE is required}
-    container_name: obsura-init-db
     restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    env_file:
+      - .env
     environment:
       OBSURA_ENVIRONMENT: production
       OBSURA_AUTO_CREATE_SCHEMA: "false"
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
     command: ["obsura-api-migrate", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
     read_only: true
     tmpfs:
       - /tmp:size=32m,mode=1777
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    networks:
-      - obsura
-    logging: *default-logging
 
   obsura-api:
-    <<: *obsura-env
     image: ${OBSURA_API_IMAGE:?OBSURA_API_IMAGE is required}
-    container_name: obsura-api
     restart: unless-stopped
     init: true
-    stop_grace_period: 30s
+    env_file:
+      - .env
+    environment:
+      OBSURA_ENVIRONMENT: production
+      OBSURA_AUTO_CREATE_SCHEMA: "false"
+      OBSURA_STORAGE_ROOT: /app/storage
     depends_on:
       postgres:
         condition: service_healthy
       obsura-init-db:
         condition: service_completed_successfully
-    environment:
-      OBSURA_ENVIRONMENT: production
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
-      OBSURA_STORAGE_ROOT: /app/storage
-      OBSURA_AUTO_CREATE_SCHEMA: "false"
-      OBSURA_MEDIA_MOUNT_PATH: ${OBSURA_MEDIA_MOUNT_PATH:-/media}
-      OBSURA_RETAIN_SOURCE_CONTENT_BY_DEFAULT: ${OBSURA_RETAIN_SOURCE_CONTENT_BY_DEFAULT:-false}
-      OBSURA_IMAGE_OUTPUT_FORMAT: ${OBSURA_IMAGE_OUTPUT_FORMAT:-PNG}
-      OBSURA_MAX_UPLOAD_BYTES: ${OBSURA_MAX_UPLOAD_BYTES:-10485760}
-      OBSURA_MAX_IMAGE_PIXELS: ${OBSURA_MAX_IMAGE_PIXELS:-20000000}
-      OBSURA_MAX_BULK_TEXT_ITEMS: ${OBSURA_MAX_BULK_TEXT_ITEMS:-50}
-      OBSURA_MAX_BULK_TEXT_ITEM_CHARACTERS: ${OBSURA_MAX_BULK_TEXT_ITEM_CHARACTERS:-100000}
-      OBSURA_MAX_BULK_TEXT_TOTAL_CHARACTERS: ${OBSURA_MAX_BULK_TEXT_TOTAL_CHARACTERS:-1000000}
-      OBSURA_FACE_DETECTOR_BACKEND: ${OBSURA_FACE_DETECTOR_BACKEND:-noop}
-      OBSURA_OCR_BACKEND: ${OBSURA_OCR_BACKEND:-noop}
-      OBSURA_OCR_LANGUAGE: ${OBSURA_OCR_LANGUAGE:-eng}
     ports:
       - ${OBSURA_BIND_HOST:-127.0.0.1}:${OBSURA_PORT:-8000}:8000
     volumes:
@@ -95,31 +54,13 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
     healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=5)
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=5)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
-    networks:
-      - obsura
-    logging: *default-logging
-
-networks:
-  obsura:
-    name: obsura_backend
-    driver: bridge
 
 volumes:
   postgres_data:
-    name: obsura_postgres_data
   obsura_storage:
-    name: obsura_storage
