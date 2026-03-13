@@ -22,6 +22,10 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_ENV",
         "OBSURA_ENVIRONMENT",
         "OBSURA_AUTO_CREATE_SCHEMA",
+        "OBSURA_CORS_ALLOWED_ORIGINS",
+        "CORS_ALLOWED_ORIGINS",
+        "OBSURA_CORS_ALLOW_CREDENTIALS",
+        "CORS_ALLOW_CREDENTIALS",
         "OBSURA_OCR_BACKEND",
         "OBSURA_OCR_PROVIDER",
         "OBSURA_OCR_LANGUAGE",
@@ -106,6 +110,38 @@ def test_development_allows_sqlite_fallback() -> None:
     settings = Settings(_env_file=None)
 
     assert settings.database_url == DEFAULT_DEVELOPMENT_DATABASE_URL
+
+
+def test_default_cors_origins_allow_local_frontends() -> None:
+    settings = Settings(_env_file=None)
+
+    assert settings.cors_allowed_origins == (
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+    )
+    assert settings.cors_allow_credentials is True
+
+
+def test_parses_comma_separated_cors_origins(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "OBSURA_CORS_ALLOWED_ORIGINS",
+        "http://127.0.0.1:3000/, http://localhost:5173",
+    )
+
+    settings = Settings(_env_file=None)
+
+    assert settings.cors_allowed_origins == (
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+    )
+
+
+def test_rejects_wildcard_cors_origin_when_credentials_enabled(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_CORS_ALLOWED_ORIGINS", "*")
+    monkeypatch.setenv("OBSURA_CORS_ALLOW_CREDENTIALS", "true")
+
+    with pytest.raises(ValidationError, match="must not include '\\*'"):
+        Settings(_env_file=None)
 
 
 def test_engine_uses_resolved_database_url(monkeypatch) -> None:

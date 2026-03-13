@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated, Any
 
-from pydantic import AliasChoices, Field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
@@ -70,6 +72,20 @@ class Settings(BaseSettings):
     max_bulk_text_items: int = Field(default=50, ge=1, le=500)
     max_bulk_text_item_characters: int = Field(default=100_000, ge=1)
     max_bulk_text_total_characters: int = Field(default=1_000_000, ge=1)
+    cors_allowed_origins: Annotated[tuple[str, ...], NoDecode] = Field(
+        default=("http://127.0.0.1:3000", "http://localhost:3000"),
+        validation_alias=AliasChoices(
+            "OBSURA_CORS_ALLOWED_ORIGINS",
+            "CORS_ALLOWED_ORIGINS",
+        ),
+    )
+    cors_allow_credentials: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "OBSURA_CORS_ALLOW_CREDENTIALS",
+            "CORS_ALLOW_CREDENTIALS",
+        ),
+    )
 
     @staticmethod
     def _normalize_database_driver(raw_database_url: str) -> str:
@@ -80,6 +96,51 @@ class Settings(BaseSettings):
         if normalized_driver:
             parsed_url = parsed_url.set(drivername=normalized_driver)
         return parsed_url.render_as_string(hide_password=False)
+
+    @staticmethod
+    def _normalize_cors_origin(origin: str) -> str:
+        normalized_origin = origin.strip()
+        if normalized_origin != "*":
+            normalized_origin = normalized_origin.rstrip("/")
+        return normalized_origin
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def parse_cors_allowed_origins(cls, value: Any) -> Any:
+        if value is None:
+            return value
+
+        if isinstance(value, str):
+            raw_value = value.strip()
+            if not raw_value:
+                return ()
+            if raw_value.startswith("["):
+                try:
+                    value = json.loads(raw_value)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        "CORS allowed origins must be a JSON array or a comma-separated string.",
+                    ) from exc
+            else:
+                value = raw_value.split(",")
+
+        if isinstance(value, (list, tuple, set)):
+            normalized_origins: list[str] = []
+            for item in value:
+                if not isinstance(item, str):
+                    raise ValueError("CORS allowed origins entries must be strings.")
+                origin = cls._normalize_cors_origin(item)
+                if not origin:
+                    continue
+                if origin != "*" and "://" not in origin:
+                    raise ValueError(
+                        "CORS allowed origins must include a scheme, for example http://127.0.0.1:3000.",
+                    )
+                if origin not in normalized_origins:
+                    normalized_origins.append(origin)
+            return tuple(normalized_origins)
+
+        return value
 
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
@@ -108,6 +169,11 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Production environment must not use OBSURA_AUTO_CREATE_SCHEMA=true. "
                 "Apply Alembic migrations explicitly before starting the API.",
+            )
+        if self.cors_allow_credentials and "*" in self.cors_allowed_origins:
+            raise ValueError(
+                "OBSURA_CORS_ALLOWED_ORIGINS must not include '*' when "
+                "OBSURA_CORS_ALLOW_CREDENTIALS=true.",
             )
 
         self.database_url = parsed_url.render_as_string(hide_password=False)

@@ -76,6 +76,10 @@ Development/test convenience:
   migrations up to the current head on startup
 - this is intended only for development and tests
 - production must keep `OBSURA_AUTO_CREATE_SCHEMA=false`
+- local frontend origins `http://127.0.0.1:3000` and `http://localhost:3000`
+  are allowed by default through CORS
+- override allowed origins with `OBSURA_CORS_ALLOWED_ORIGINS` using either a
+  comma-separated list or a JSON array string
 
 Current operational endpoints:
 
@@ -171,6 +175,10 @@ The repository keeps two generated API client artifacts at the root:
 
 - `openapi.json`
 - `postman.json`
+
+For frontend integration guidance, use:
+
+- [guide/FRONTEND_API_GUIDE.md](guide/FRONTEND_API_GUIDE.md)
 
 Regenerate them after route or schema changes with either:
 

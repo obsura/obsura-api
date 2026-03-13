@@ -24,6 +24,23 @@ def test_ready_and_version_endpoints(client) -> None:
     assert version_body["data"]["schema_head"] == expected_head
 
 
+def test_cors_preflight_allows_local_frontend(client) -> None:
+    response = client.options(
+        "/api/v1/health",
+        headers={
+            "Origin": "http://127.0.0.1:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "Authorization",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:3000"
+    assert response.headers["access-control-allow-credentials"] == "true"
+    assert "GET" in response.headers["access-control-allow-methods"]
+    assert response.headers["access-control-allow-headers"] == "Authorization"
+
+
 def test_storage_service_uses_safe_relative_references(tmp_path) -> None:
     settings = Settings(
         database_url=f"sqlite:///{tmp_path / 'obsura.db'}",
