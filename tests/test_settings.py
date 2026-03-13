@@ -40,6 +40,35 @@ def test_reads_database_url_from_canonical_env(monkeypatch) -> None:
     assert settings.database_url == database_url
 
 
+@pytest.mark.parametrize(
+    ("raw_database_url", "expected_database_url"),
+    (
+        (
+            "postgresql://obsura:password@postgres:5432/obsura",
+            "postgresql+psycopg://obsura:password@postgres:5432/obsura",
+        ),
+        (
+            "postgres://obsura:password@postgres:5432/obsura",
+            "postgresql+psycopg://obsura:password@postgres:5432/obsura",
+        ),
+        (
+            "postgresql+psycopg2://obsura:password@postgres:5432/obsura",
+            "postgresql+psycopg://obsura:password@postgres:5432/obsura",
+        ),
+    ),
+)
+def test_normalizes_supported_postgres_driver_aliases(
+    monkeypatch,
+    raw_database_url: str,
+    expected_database_url: str,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", raw_database_url)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.database_url == expected_database_url
+
+
 def test_reads_database_url_from_obsura_alias(monkeypatch) -> None:
     database_url = "postgresql+psycopg://obsura:password@postgres:5432/obsura"
     monkeypatch.setenv("OBSURA_DATABASE_URL", database_url)

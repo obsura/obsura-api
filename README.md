@@ -111,8 +111,11 @@ For a containerized local or self-hosted deployment, use
 Typical flow:
 
 1. Copy `.env.example` to `.env`.
-2. Set `OBSURA_API_IMAGE` to the image tag you want to run.
-3. Set `POSTGRES_PASSWORD` and `DATABASE_URL`.
+2. Set `OBSURA_API_IMAGE` to a pinned image tag you want to run.
+3. Set `POSTGRES_PASSWORD` and make sure `DATABASE_URL` uses the same
+   credentials and the host name `postgres`. Plain `postgresql://...` and
+   legacy `postgres://...` URLs are accepted and normalized internally to the
+   supported `postgresql+psycopg://...` driver.
 4. Start the stack with `docker compose up -d`.
 
 The compose stack includes:
@@ -121,6 +124,8 @@ The compose stack includes:
 - a one-shot migration service
 - the API container with a persistent storage volume
 - healthchecks and startup ordering
+- a read-only API filesystem with a writable storage volume and `/tmp` tmpfs
+- deterministic container, network, and volume names for simpler operations
 
 The `obsura-init-db` service now runs:
 
@@ -132,12 +137,27 @@ The API container expects the database to already be at the current Alembic
 head. In production mode it will fail fast if the schema is missing, unstamped,
 or behind.
 
+The compose file now expects a real `.env` file. It uses `.env` in two ways:
+
+- Docker Compose variable interpolation for values such as `DATABASE_URL`,
+  `POSTGRES_PASSWORD`, and `OBSURA_API_IMAGE`
+- `env_file` injection for the migration and API containers so the same runtime
+  configuration is available inside the container process without extra CLI
+  flags
+
 By default the API binds only to `127.0.0.1:8000`. After startup, access:
 
 - `http://localhost:8000/api/v1/health`
 - `http://localhost:8000/api/v1/ready`
 - `http://localhost:8000/api/v1/version`
 - `http://localhost:8000/docs`
+
+Operational commands:
+
+- `docker compose up -d`
+- `docker compose logs -f obsura-api`
+- `docker compose logs -f obsura-init-db`
+- `docker compose ps`
 
 ## CI/CD
 

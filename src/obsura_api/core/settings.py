@@ -11,6 +11,11 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
 DEFAULT_DEVELOPMENT_DATABASE_URL = "sqlite:///./data/obsura.db"
+POSTGRES_DRIVER_ALIASES = {
+    "postgres": "postgresql+psycopg",
+    "postgresql": "postgresql+psycopg",
+    "postgresql+psycopg2": "postgresql+psycopg",
+}
 
 
 class Settings(BaseSettings):
@@ -66,6 +71,16 @@ class Settings(BaseSettings):
     max_bulk_text_item_characters: int = Field(default=100_000, ge=1)
     max_bulk_text_total_characters: int = Field(default=1_000_000, ge=1)
 
+    @staticmethod
+    def _normalize_database_driver(raw_database_url: str) -> str:
+        """Normalize supported database URL aliases to the installed driver."""
+
+        parsed_url = make_url(raw_database_url)
+        normalized_driver = POSTGRES_DRIVER_ALIASES.get(parsed_url.drivername)
+        if normalized_driver:
+            parsed_url = parsed_url.set(drivername=normalized_driver)
+        return parsed_url.render_as_string(hide_password=False)
+
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
         raw_database_url = self.database_url.strip()
@@ -79,7 +94,8 @@ class Settings(BaseSettings):
             raw_database_url = DEFAULT_DEVELOPMENT_DATABASE_URL
 
         try:
-            parsed_url = make_url(raw_database_url)
+            normalized_database_url = self._normalize_database_driver(raw_database_url)
+            parsed_url = make_url(normalized_database_url)
         except ArgumentError as exc:
             raise ValueError(f"Invalid database URL: {exc}") from exc
 

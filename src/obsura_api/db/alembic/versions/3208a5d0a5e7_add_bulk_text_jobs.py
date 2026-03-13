@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision = "3208a5d0a5e7"
 down_revision = "ebbb78f282b7"
@@ -35,6 +36,19 @@ def _drop_table_if_exists(table_name: str) -> None:
         op.drop_table(table_name)
 
 
+def _content_type_enum() -> sa.Enum:
+    if op.get_bind().dialect.name == "postgresql":
+        return postgresql.ENUM(
+            "TEXT",
+            "STRUCTURED_TEXT",
+            "SCREENSHOT",
+            "IMAGE",
+            name="contenttype",
+            create_type=False,
+        )
+    return sa.Enum("TEXT", "STRUCTURED_TEXT", "SCREENSHOT", "IMAGE", name="contenttype")
+
+
 def upgrade() -> None:
     if not _has_table("bulk_jobs"):
         op.create_table(
@@ -42,7 +56,7 @@ def upgrade() -> None:
             sa.Column("title", sa.String(length=160), nullable=True),
             sa.Column(
                 "content_type",
-                sa.Enum("TEXT", "STRUCTURED_TEXT", "SCREENSHOT", "IMAGE", name="contenttype"),
+                _content_type_enum(),
                 nullable=False,
             ),
             sa.Column(
