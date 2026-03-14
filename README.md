@@ -87,6 +87,7 @@ Development/test convenience:
 
 Current operational endpoints:
 
+- `GET /` and `GET /api` for a friendly service root with docs and OpenAPI links
 - `GET /api/v1/health` for liveness
 - `GET /api/v1/ready` for dependency-aware readiness
 - `GET /api/v1/version` for runtime version and backend metadata

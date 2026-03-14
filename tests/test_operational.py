@@ -5,6 +5,38 @@ from obsura_api.db.migrations import get_head_revision
 from obsura_api.services.storage import StorageService
 
 
+def test_friendly_api_root_returns_public_metadata(client) -> None:
+    response = client.get(
+        "/",
+        headers={
+            "Host": "api.obsura.one",
+            "X-Forwarded-Proto": "https",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "name": "Obsura API",
+        "status": "ok",
+        "docs_url": "https://api.obsura.one/docs",
+        "openapi_url": "https://api.obsura.one/openapi.json",
+        "version": "v0.1.0",
+    }
+
+
+def test_api_alias_returns_same_friendly_metadata(client) -> None:
+    headers = {
+        "Host": "api.obsura.one",
+        "X-Forwarded-Proto": "https",
+    }
+
+    root_response = client.get("/", headers=headers)
+    api_response = client.get("/api", headers=headers)
+
+    assert api_response.status_code == 200
+    assert api_response.json() == root_response.json()
+
+
 def test_ready_and_version_endpoints(client) -> None:
     ready_response = client.get("/api/v1/ready")
     assert ready_response.status_code == 200
