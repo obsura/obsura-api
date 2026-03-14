@@ -59,17 +59,20 @@ async def _read_upload_bytes(file: UploadFile, *, max_bytes: int) -> bytes:
 
     chunks: list[bytes] = []
     total_size = 0
-    while True:
-        chunk = await file.read(1024 * 1024)
-        if not chunk:
-            break
-        total_size += len(chunk)
-        if total_size > max_bytes:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=f"Uploaded file exceeds the {max_bytes} byte limit",
-            )
-        chunks.append(chunk)
+    try:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > max_bytes:
+                raise HTTPException(
+                    status.HTTP_413_CONTENT_TOO_LARGE,
+                    detail=f"Uploaded file exceeds the {max_bytes} byte limit",
+                )
+            chunks.append(chunk)
+    finally:
+        await file.close()
 
     file_bytes = b"".join(chunks)
     if not file_bytes:

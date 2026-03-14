@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
@@ -20,6 +21,7 @@ from obsura_api.domain.enums import (
 from obsura_api.domain.studio import PatternMatcherDefinition
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingRecord, ManualTextSpan, TextAnalysisRequest, TextAnalysisResponse
+from obsura_api.services.privacy import sanitize_persisted_finding_metadata
 from obsura_api.services.studio import StudioService
 from obsura_api.services.utils import hash_value, preview_value, summarize_findings, unique_ids
 from obsura_api.services.providers.pii import DetectedPIIEntity, NoOpPIIDetector, PIIDetector
@@ -173,6 +175,7 @@ class TextDetectionService:
         self.pii_detector = pii_detector or NoOpPIIDetector()
 
     def analyze(self, request: TextAnalysisRequest) -> TextAnalysisResponse:
+        self._validate_content_size(request.content)
         (
             patterns,
             entities,
@@ -200,13 +203,10 @@ class TextDetectionService:
 
         job_id: str | None = None
         if request.persist_job:
-            persist_source = request.persist_source_content
-            if persist_source is None:
-                persist_source = self.settings.retain_source_content_by_default
             job_id = self.persist_analyzed_job(
                 title=request.title,
                 content_type=request.content_type,
-                content=request.content if persist_source else None,
+                content=None,
                 pattern_ids=pattern_ids,
                 custom_entity_ids=custom_entity_ids,
                 configuration_ids=configuration_ids,
@@ -215,6 +215,17 @@ class TextDetectionService:
 
         summary = summarize_findings(findings)
         return TextAnalysisResponse(job_id=job_id, findings=findings, summary=summary)
+
+    def _validate_content_size(self, content: str) -> None:
+        if len(content) <= self.settings.max_bulk_text_item_characters:
+            return
+        raise HTTPException(
+            status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=(
+                "Text content exceeds the configured maximum of "
+                f"{self.settings.max_bulk_text_item_characters} characters"
+            ),
+        )
 
     def build_findings(
         self,
@@ -617,7 +628,7 @@ class TextDetectionService:
                 entity_name=finding.entity_name,
                 start_index=finding.start_index,
                 end_index=finding.end_index,
-                matched_text_preview=finding.matched_text_preview,
+                matched_text_preview=None,
                 matched_text_hash=finding.matched_text_hash,
                 confidence=finding.confidence,
                 decision=finding.decision,
@@ -626,7 +637,7 @@ class TextDetectionService:
                     if finding.transformation is not None
                     else None
                 ),
-                extra_data=finding.metadata,
+                extra_data=sanitize_persisted_finding_metadata(finding.metadata),
             )
             self.session.add(row)
             self.session.flush()

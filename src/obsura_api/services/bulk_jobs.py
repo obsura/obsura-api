@@ -219,10 +219,6 @@ class BulkJobService:
             default_transformation=payload.default_transformation,
         )
 
-        persist_source_content = payload.persist_source_content
-        if persist_source_content is None:
-            persist_source_content = self.settings.retain_source_content_by_default
-
         bulk_job = BulkJob(
             title=payload.title,
             content_type=payload.content_type,
@@ -267,7 +263,7 @@ class BulkJobService:
                 job_id = self.text_detection.persist_analyzed_job(
                     title=normalized_title,
                     content_type=payload.content_type,
-                    content=content if persist_source_content else None,
+                    content=None,
                     pattern_ids=resolved_pattern_ids,
                     custom_entity_ids=resolved_custom_entity_ids,
                     configuration_ids=resolved_configuration_ids,

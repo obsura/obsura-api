@@ -100,6 +100,24 @@ class Settings(BaseSettings):
     image_output_format: str = "PNG"
     max_upload_bytes: int = Field(default=10 * 1024 * 1024, ge=1)
     max_image_pixels: int = Field(default=20_000_000, ge=1)
+    max_ephemeral_artifacts: int = Field(
+        default=256,
+        ge=1,
+        le=4096,
+        validation_alias=AliasChoices(
+            "OBSURA_MAX_EPHEMERAL_ARTIFACTS",
+            "OBSURA_EPHEMERAL_MEDIA_MAX_ITEMS",
+        ),
+    )
+    ephemeral_artifact_ttl_seconds: int = Field(
+        default=900,
+        ge=1,
+        le=86_400,
+        validation_alias=AliasChoices(
+            "OBSURA_EPHEMERAL_ARTIFACT_TTL_SECONDS",
+            "OBSURA_MEDIA_TTL_SECONDS",
+        ),
+    )
     max_bulk_text_items: int = Field(default=50, ge=1, le=500)
     max_bulk_text_item_characters: int = Field(default=100_000, ge=1)
     max_bulk_text_total_characters: int = Field(default=1_000_000, ge=1)

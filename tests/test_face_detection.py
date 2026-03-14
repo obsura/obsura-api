@@ -132,8 +132,11 @@ def test_image_transform_uses_detected_faces_with_configuration_default(client) 
     )
 
     assert response.status_code == 200
-    output_path = client.app.state.container.storage.resolve_stored_path(
-        response.json()["data"]["stored_output_path"]
+    transformed = Image.open(
+        BytesIO(
+            client.app.state.container.storage.read_stored_bytes(
+                response.json()["data"]["stored_output_path"]
+            )
+        )
     )
-    transformed = Image.open(output_path)
     assert transformed.getpixel((4, 4)) != (255, 255, 255)
