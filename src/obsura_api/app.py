@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -75,6 +75,29 @@ This OpenAPI document is intended for direct import into API clients such as Pos
 """.strip()
 
 
+def _first_forwarded_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    item = value.split(",", 1)[0].strip()
+    return item or None
+
+
+def _public_base_url(request: Request) -> str:
+    scheme = _first_forwarded_value(request.headers.get("x-forwarded-proto")) or request.url.scheme
+    host = _first_forwarded_value(request.headers.get("x-forwarded-host")) or request.headers.get(
+        "host",
+    )
+    if not host:
+        host = request.url.netloc
+    return f"{scheme}://{host}"
+
+
+def _public_url(base_url: str, path: str | None) -> str | None:
+    if not path:
+        return None
+    return f"{base_url}{path}"
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Create the FastAPI application and shared runtime container."""
 
@@ -134,6 +157,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/api", include_in_schema=False)
+    def api_root(request: Request) -> dict[str, str | None]:
+        public_base_url = _public_base_url(request)
+        return {
+            "name": settings.app_name,
+            "status": "ok",
+            "docs_url": _public_url(public_base_url, app.docs_url),
+            "openapi_url": _public_url(public_base_url, app.openapi_url),
+            "version": f"v{__version__}",
+        }
 
     app.state.container = AppContainer(
         settings=settings,
