@@ -34,8 +34,21 @@ can also be augmented with an optional Presidio backend.
 
 ## Standards Alignment
 
-This repository follows the product direction in the local root Markdown files
-and the cross-project guidance from `obsura-standards`.
+This repository follows the product direction in the repository docs and the
+cross-project guidance from `obsura-standards`.
+
+Primary project documents:
+
+- [docs/README.md](docs/README.md)
+- [docs/product/REQUIREMENTS.md](docs/product/REQUIREMENTS.md)
+- [docs/product/SCENARIOS.md](docs/product/SCENARIOS.md)
+- [docs/product/NON_GOALS.md](docs/product/NON_GOALS.md)
+- [docs/architecture/STACK.md](docs/architecture/STACK.md)
+- [docs/architecture/TOOLING.md](docs/architecture/TOOLING.md)
+- [docs/operations/CICD.md](docs/operations/CICD.md)
+- [docs/legal/OPEN_SOURCE_POLICY.md](docs/legal/OPEN_SOURCE_POLICY.md)
+- [docs/legal/THIRD_PARTY_NOTICES.md](docs/legal/THIRD_PARTY_NOTICES.md)
+- [docs/legal/DEPENDENCY_LICENSE_INVENTORY.md](docs/legal/DEPENDENCY_LICENSE_INVENTORY.md)
 
 The main local deviation is the runtime stack:
 
@@ -45,6 +58,17 @@ The main local deviation is the runtime stack:
   image-processing fit
 
 That deviation is explicit rather than accidental.
+
+## Open Source and Community
+
+The repository-level open-source governance files are:
+
+- [LICENSE](LICENSE)
+- [.github/CODE_OF_CONDUCT.md](.github/CODE_OF_CONDUCT.md)
+- [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
+- [.github/SECURITY.md](.github/SECURITY.md)
+- [.github/SUPPORT.md](.github/SUPPORT.md)
+- [.github/GOVERNANCE.md](.github/GOVERNANCE.md)
 
 ## Project Layout
 
@@ -69,7 +93,8 @@ tests/        behavior-focused API and service tests
 7. Regenerate API artifacts with `python -m obsura_api.tools.api_artifacts`.
 
 The default database is SQLite for local execution and tests. Production should
-use PostgreSQL as defined in [STACK.md](STACK.md).
+use PostgreSQL as defined in
+[docs/architecture/STACK.md](docs/architecture/STACK.md).
 
 Alembic migrations are now the authoritative schema mechanism for the project.
 The API no longer treats SQLAlchemy `create_all()` as the production schema

@@ -199,6 +199,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         },
         license_info={
             "name": "AGPL-3.0-or-later",
+            "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
         },
         openapi_tags=OPENAPI_TAGS,
         servers=[
