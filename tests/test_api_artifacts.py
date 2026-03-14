@@ -70,3 +70,18 @@ def test_postman_collection_uses_chained_variables() -> None:
         if item["key"] == "manifest_json"
     )
     assert '"detect_text": true' in manifest_field["value"]
+
+    structured_folder = next(
+        item for item in collection["item"] if item["name"] == "Structured Workflows"
+    )
+    structured_analyze_request = next(
+        item for item in structured_folder["item"] if item["name"] == "Analyze Structured"
+    )
+    assert '"data"' in structured_analyze_request["request"]["body"]["raw"]
+    assert structured_analyze_request["event"]
+
+    structured_transform_job_request = next(
+        item for item in structured_folder["item"] if item["name"] == "Transform Structured Job"
+    )
+    assert "{{jobId}}" in structured_transform_job_request["request"]["body"]["raw"]
+    assert "{{findingId}}" in structured_transform_job_request["request"]["body"]["raw"]

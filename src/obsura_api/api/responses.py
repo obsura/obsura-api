@@ -14,7 +14,17 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from obsura_api.domain.common import ApiError, ApiResponse, PaginationMeta
 
 logger = logging.getLogger(__name__)
-SENSITIVE_DETAIL_KEYS = {"body", "content", "file", "file_bytes", "input", "manifest_json", "text"}
+SENSITIVE_DETAIL_KEYS = {
+    "body",
+    "content",
+    "data",
+    "file",
+    "file_bytes",
+    "input",
+    "manifest_json",
+    "structured_data",
+    "text",
+}
 
 
 def _sanitize_details(value: Any) -> Any:

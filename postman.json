@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Obsura API",
-    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text or image workflow requests in order without manually copying IDs.\n5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n6. Bulk text responses keep parent bulk state and per-item outcomes separate.\n7. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing.",
+    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text, structured, or image workflow requests in order without manually copying IDs.\n5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n6. Bulk text responses keep parent bulk state and per-item outcomes separate.\n7. Structured workflow examples include nested JSON payloads for field-level review.\n8. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "obsura-api-collection"
   },
@@ -2662,6 +2662,336 @@
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
                   "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Structured Workflows",
+      "description": "Review-first structured JSON workflows for nested payloads, records, and semi-structured application data.",
+      "item": [
+        {
+          "name": "Analyze Structured",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Analyze Structured\n\nAnalyze structured JSON content into reviewable field findings.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/structured/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "structured",
+                "analyze"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Customer profile review\",\n  \"data\": {\n    \"customer\": {\n      \"email\": \"john@example.com\",\n      \"id\": \"CUST-123\"\n    },\n    \"contacts\": [\n      {\n        \"phone\": \"+1 202-555-0123\"\n      }\n    ]\n  },\n  \"apply_builtins\": true,\n  \"persist_job\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Structured",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Structured\n\nAnalyze and transform structured JSON content in one request.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/structured/transform",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "structured",
+                "transform"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Structured one-shot export\",\n  \"data\": {\n    \"customer\": {\n      \"email\": \"john@example.com\",\n      \"token\": \"secret\"\n    }\n  },\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"persist_job\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Structured Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Structured Job\n\nTransform a persisted structured job after review and overrides.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/structured/transform-job",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "structured",
+                "transform-job"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"data\": {\n    \"customer\": {\n      \"email\": \"john@example.com\",\n      \"id\": \"CUST-123\"\n    }\n  },\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",

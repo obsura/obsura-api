@@ -3,7 +3,7 @@
   "info": {
     "title": "Obsura API",
     "summary": "Review-first sanitization workflows, studio assets, and job orchestration for Obsura.",
-    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- persisted bulk text submissions that group many reviewable child jobs\n- reviewable jobs and run history\n- text-first and screenshot-first sanitization workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
+    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- persisted bulk text submissions that group many reviewable child jobs\n- reviewable jobs and run history\n- text-first and screenshot-first sanitization workflows\n- structured JSON analyze/review/transform workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
     "contact": {
       "name": "Obsura",
       "url": "https://github.com/obsura"
@@ -1294,6 +1294,132 @@
         }
       }
     },
+    "/api/v1/workflows/structured/analyze": {
+      "post": {
+        "tags": [
+          "structured-workflows"
+        ],
+        "summary": "Analyze Structured",
+        "description": "Analyze structured JSON content into reviewable field findings.",
+        "operationId": "analyze_structured_api_v1_workflows_structured_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructuredAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_StructuredWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/structured/transform": {
+      "post": {
+        "tags": [
+          "structured-workflows"
+        ],
+        "summary": "Transform Structured",
+        "description": "Analyze and transform structured JSON content in one request.",
+        "operationId": "transform_structured_api_v1_workflows_structured_transform_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructuredTransformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_StructuredWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/structured/transform-job": {
+      "post": {
+        "tags": [
+          "structured-workflows"
+        ],
+        "summary": "Transform Structured Job",
+        "description": "Transform a persisted structured job after review and overrides.",
+        "operationId": "transform_structured_job_api_v1_workflows_structured_transform_job_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StructuredJobTransformRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_StructuredWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflows/images/analyze": {
       "post": {
         "tags": [
@@ -1936,6 +2062,60 @@
           "success"
         ],
         "title": "ApiResponse[ServiceVersionInfo]"
+      },
+      "ApiResponse_StructuredWorkflowResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StructuredWorkflowResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[StructuredWorkflowResponse]"
       },
       "ApiResponse_TextAnalysisResponse_": {
         "properties": {
@@ -4215,6 +4395,7 @@
         "type": "string",
         "enum": [
           "text_span",
+          "structured_field",
           "image_region",
           "face_region",
           "face_subregion"
@@ -5613,6 +5794,398 @@
         "title": "ServiceVersionInfo",
         "description": "Runtime version and capability metadata."
       },
+      "StructuredAnalysisRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "items": {},
+                "type": "array"
+              }
+            ],
+            "title": "Data"
+          },
+          "apply_builtins": {
+            "type": "boolean",
+            "title": "Apply Builtins",
+            "default": true
+          },
+          "pattern_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Custom Entity Ids"
+          },
+          "configuration_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Configuration Ids"
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "exact_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exact Values"
+          },
+          "default_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persist_job": {
+            "type": "boolean",
+            "title": "Persist Job",
+            "default": true
+          },
+          "persist_source_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persist Source Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "StructuredAnalysisRequest",
+        "description": "Request to analyze structured JSON content."
+      },
+      "StructuredJobTransformRequest": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Job Id"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "items": {},
+                "type": "array"
+              }
+            ],
+            "title": "Data"
+          },
+          "finding_overrides": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOverride"
+            },
+            "type": "array",
+            "title": "Finding Overrides"
+          },
+          "include_pending": {
+            "type": "boolean",
+            "title": "Include Pending",
+            "default": false
+          },
+          "default_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persist_output": {
+            "type": "boolean",
+            "title": "Persist Output",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "job_id",
+          "data"
+        ],
+        "title": "StructuredJobTransformRequest",
+        "description": "Request to transform a persisted structured job after review decisions."
+      },
+      "StructuredReplacementRecord": {
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Index"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Index"
+          },
+          "original_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Preview"
+          },
+          "output_value": {
+            "type": "string",
+            "title": "Output Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_type",
+          "path",
+          "output_value"
+        ],
+        "title": "StructuredReplacementRecord",
+        "description": "One structured-field replacement in a transformed output."
+      },
+      "StructuredTransformRequest": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "items": {},
+                "type": "array"
+              }
+            ],
+            "title": "Data"
+          },
+          "apply_builtins": {
+            "type": "boolean",
+            "title": "Apply Builtins",
+            "default": true
+          },
+          "pattern_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Pattern Ids"
+          },
+          "custom_entity_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Custom Entity Ids"
+          },
+          "configuration_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            },
+            "type": "array",
+            "title": "Configuration Ids"
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "exact_values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exact Values"
+          },
+          "default_transformation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "persist_job": {
+            "type": "boolean",
+            "title": "Persist Job",
+            "default": true
+          },
+          "persist_source_content": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Persist Source Content"
+          },
+          "persist_output": {
+            "type": "boolean",
+            "title": "Persist Output",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "StructuredTransformRequest",
+        "description": "Request to analyze and transform structured JSON content in one call."
+      },
+      "StructuredWorkflowResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRecord"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "output_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Data"
+          },
+          "replacements": {
+            "items": {
+              "$ref": "#/components/schemas/StructuredReplacementRecord"
+            },
+            "type": "array",
+            "title": "Replacements"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings",
+          "summary"
+        ],
+        "title": "StructuredWorkflowResponse",
+        "description": "Structured workflow result for analyze or transform operations."
+      },
       "TextAnalysisRequest": {
         "properties": {
           "title": {
@@ -6104,6 +6677,10 @@
     {
       "name": "text-workflows",
       "description": "Review-first text detection and transformation workflows for pasted text, logs, and structured technical content."
+    },
+    {
+      "name": "structured-workflows",
+      "description": "Review-first structured JSON workflows for nested payloads, records, and semi-structured application data."
     },
     {
       "name": "image-workflows",

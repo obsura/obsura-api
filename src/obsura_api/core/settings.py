@@ -156,6 +156,9 @@ class Settings(BaseSettings):
     max_bulk_text_items: int = Field(default=50, ge=1, le=500)
     max_bulk_text_item_characters: int = Field(default=100_000, ge=1)
     max_bulk_text_total_characters: int = Field(default=1_000_000, ge=1)
+    max_structured_payload_nodes: int = Field(default=5_000, ge=1, le=100_000)
+    max_structured_payload_depth: int = Field(default=16, ge=1, le=128)
+    max_structured_payload_characters: int = Field(default=250_000, ge=1)
     cors_allowed_origins: Annotated[tuple[str, ...], NoDecode] = Field(
         default=("http://127.0.0.1:3000", "http://localhost:3000"),
         validation_alias=AliasChoices(
