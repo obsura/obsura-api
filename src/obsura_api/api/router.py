@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from obsura_api.api.routes import (
     bulk_jobs,
+    csv_workflows,
     document_workflows,
     health,
     image_workflows,
@@ -20,6 +21,7 @@ api_router.include_router(health.router)
 api_router.include_router(bulk_jobs.router)
 api_router.include_router(studio.router)
 api_router.include_router(jobs.router)
+api_router.include_router(csv_workflows.router)
 api_router.include_router(document_workflows.router)
 api_router.include_router(text_workflows.router)
 api_router.include_router(structured_workflows.router)

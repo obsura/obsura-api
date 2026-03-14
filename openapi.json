@@ -3,13 +3,14 @@
   "info": {
     "title": "Obsura API",
     "summary": "Review-first sanitization workflows, studio assets, and job orchestration for Obsura.",
-    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- persisted bulk text submissions that group many reviewable child jobs\n- reviewable jobs and run history\n- PDF text extraction workflows for review-first document sanitization\n- text-first and screenshot-first sanitization workflows\n- structured JSON analyze/review/transform workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
+    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- persisted bulk text submissions that group many reviewable child jobs\n- reviewable jobs and run history\n- CSV analyze/review/transform workflows for tabular technical data\n- PDF text extraction workflows for review-first document sanitization\n- text-first and screenshot-first sanitization workflows\n- structured JSON analyze/review/transform workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
     "contact": {
       "name": "Obsura",
       "url": "https://github.com/obsura"
     },
     "license": {
-      "name": "AGPL-3.0-or-later"
+      "name": "AGPL-3.0-or-later",
+      "url": "https://www.gnu.org/licenses/agpl-3.0.en.html"
     },
     "version": "0.1.0"
   },
@@ -1168,6 +1169,132 @@
         }
       }
     },
+    "/api/v1/workflows/csv/analyze": {
+      "post": {
+        "tags": [
+          "csv-workflows"
+        ],
+        "summary": "Analyze CSV",
+        "description": "Analyze an uploaded CSV into reviewable cell findings.",
+        "operationId": "analyze_csv_api_v1_workflows_csv_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_csv_api_v1_workflows_csv_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CSVWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/csv/transform": {
+      "post": {
+        "tags": [
+          "csv-workflows"
+        ],
+        "summary": "Transform CSV",
+        "description": "Analyze and transform an uploaded CSV without persisting raw file contents.",
+        "operationId": "transform_csv_api_v1_workflows_csv_transform_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transform_csv_api_v1_workflows_csv_transform_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CSVWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/csv/transform-job": {
+      "post": {
+        "tags": [
+          "csv-workflows"
+        ],
+        "summary": "Transform CSV Job",
+        "description": "Transform a reviewed CSV job using a resubmitted source file.",
+        "operationId": "transform_csv_job_api_v1_workflows_csv_transform_job_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transform_csv_job_api_v1_workflows_csv_transform_job_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_CSVWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflows/documents/analyze": {
       "post": {
         "tags": [
@@ -1864,6 +1991,60 @@
           "success"
         ],
         "title": "ApiResponse[BulkTextTransformResponse]"
+      },
+      "ApiResponse_CSVWorkflowResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CSVWorkflowResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[CSVWorkflowResponse]"
       },
       "ApiResponse_ConfigurationRead_": {
         "properties": {
@@ -2811,6 +2992,25 @@
         ],
         "title": "ApiResponse[list[SearchResultItem]]"
       },
+      "Body_analyze_csv_api_v1_workflows_csv_analyze_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_analyze_csv_api_v1_workflows_csv_analyze_post"
+      },
       "Body_analyze_document_api_v1_workflows_documents_analyze_post": {
         "properties": {
           "file": {
@@ -2848,6 +3048,44 @@
           "file"
         ],
         "title": "Body_analyze_image_api_v1_workflows_images_analyze_post"
+      },
+      "Body_transform_csv_api_v1_workflows_csv_transform_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_transform_csv_api_v1_workflows_csv_transform_post"
+      },
+      "Body_transform_csv_job_api_v1_workflows_csv_transform_job_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_transform_csv_job_api_v1_workflows_csv_transform_job_post"
       },
       "Body_transform_document_api_v1_workflows_documents_transform_post": {
         "properties": {
@@ -3859,6 +4097,176 @@
         "title": "BulkTextTransformResponse",
         "description": "Bulk text transform response."
       },
+      "CSVReplacementRecord": {
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "row_number": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Row Number"
+          },
+          "column_index": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Column Index"
+          },
+          "column_name": {
+            "type": "string",
+            "title": "Column Name"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Index"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Index"
+          },
+          "original_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Preview"
+          },
+          "output_value": {
+            "type": "string",
+            "title": "Output Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_type",
+          "row_number",
+          "column_index",
+          "column_name",
+          "output_value"
+        ],
+        "title": "CSVReplacementRecord",
+        "description": "One replacement applied inside a CSV cell."
+      },
+      "CSVWorkflowResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRecord"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "has_header": {
+            "type": "boolean",
+            "title": "Has Header"
+          },
+          "headers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Headers"
+          },
+          "row_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Row Count"
+          },
+          "column_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Column Count"
+          },
+          "output_rows": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Rows"
+          },
+          "output_csv": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Csv"
+          },
+          "formula_escape_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Formula Escape Count",
+            "default": 0
+          },
+          "replacements": {
+            "items": {
+              "$ref": "#/components/schemas/CSVReplacementRecord"
+            },
+            "type": "array",
+            "title": "Replacements"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings",
+          "has_header",
+          "row_count",
+          "column_count",
+          "summary"
+        ],
+        "title": "CSVWorkflowResponse",
+        "description": "Review-first CSV workflow response."
+      },
       "ConfigurationCreate": {
         "properties": {
           "kind": {
@@ -4353,6 +4761,7 @@
           "text",
           "structured_text",
           "document",
+          "csv",
           "screenshot",
           "image"
         ],
@@ -7100,6 +7509,10 @@
     {
       "name": "jobs",
       "description": "Review history, job inspection, and review-decision updates."
+    },
+    {
+      "name": "csv-workflows",
+      "description": "Review-first CSV workflows for cell-level analysis, transformation, and safe export."
     },
     {
       "name": "document-workflows",

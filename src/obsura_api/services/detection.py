@@ -420,7 +420,11 @@ class TextDetectionService:
     ) -> bool:
         if content_type in applies_to:
             return True
-        return content_type is ContentType.DOCUMENT and ContentType.TEXT in applies_to
+        if content_type is ContentType.DOCUMENT:
+            return ContentType.TEXT in applies_to
+        if content_type is ContentType.CSV:
+            return ContentType.STRUCTURED_TEXT in applies_to or ContentType.TEXT in applies_to
+        return False
 
     def _detect_built_ins(
         self,

@@ -60,6 +60,10 @@ OPENAPI_TAGS = [
         "description": "Review history, job inspection, and review-decision updates.",
     },
     {
+        "name": "csv-workflows",
+        "description": "Review-first CSV workflows for cell-level analysis, transformation, and safe export.",
+    },
+    {
         "name": "document-workflows",
         "description": "Review-first PDF text extraction workflows for safe document analysis and sanitized export.",
     },
@@ -84,6 +88,7 @@ The API supports:
 - persistent studio assets for custom detection and reusable configurations
 - persisted bulk text submissions that group many reviewable child jobs
 - reviewable jobs and run history
+- CSV analyze/review/transform workflows for tabular technical data
 - PDF text extraction workflows for review-first document sanitization
 - text-first and screenshot-first sanitization workflows
 - structured JSON analyze/review/transform workflows
@@ -194,6 +199,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         },
         license_info={
             "name": "AGPL-3.0-or-later",
+            "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
         },
         openapi_tags=OPENAPI_TAGS,
         servers=[

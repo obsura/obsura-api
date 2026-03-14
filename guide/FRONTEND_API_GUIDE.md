@@ -163,6 +163,28 @@ Frontend guidance:
 - use `pii_detection` when the operator needs language, entity scope, or context
   tuning for Presidio-backed detection
 
+### CSV Workflows
+
+Main endpoints:
+
+- `POST /api/v1/workflows/csv/analyze`
+- `POST /api/v1/workflows/csv/transform`
+- `POST /api/v1/workflows/csv/transform-job`
+
+Frontend guidance:
+
+- these endpoints currently support UTF-8 CSV uploads only
+- they use `multipart/form-data`
+- `manifest_json` is a JSON string field, not a nested JSON body
+- findings are attached to specific cells and include safe metadata such as
+  `csv_row_number`, `csv_column_index`, and `csv_column_name`
+- for reviewed CSV jobs, resend the original CSV file to `transform-job`; raw CSV
+  source files are not retained by the backend
+- use `output_csv` for file downloads; it is formula-safe and escapes spreadsheet
+  formula-like cells before export
+- use `output_rows` for preview UI if you do not want the formula-safe export
+  escaping to appear in the table view
+
 ### Document Workflows
 
 Main endpoints:
@@ -252,6 +274,7 @@ Frontend should model the main workflows like this:
 This applies to:
 
 - single text flows
+- CSV tabular flows
 - PDF document flows
 - structured JSON flows
 - image/screenshot flows
@@ -322,6 +345,8 @@ Where it can be used:
 
 - `POST /api/v1/workflows/text/analyze`
 - `POST /api/v1/workflows/text/analyze-transform`
+- `POST /api/v1/workflows/csv/analyze` inside `manifest_json`
+- `POST /api/v1/workflows/csv/transform` inside `manifest_json`
 - `POST /api/v1/workflows/documents/analyze` inside `manifest_json`
 - `POST /api/v1/workflows/documents/transform` inside `manifest_json`
 - `POST /api/v1/workflows/structured/analyze`
@@ -416,6 +441,7 @@ Use one typed API client layer with resource grouping similar to the backend:
 - `studioApi`
 - `jobsApi`
 - `textWorkflowsApi`
+- `csvWorkflowsApi`
 - `documentWorkflowsApi`
 - `structuredWorkflowsApi`
 - `imageWorkflowsApi`
@@ -436,6 +462,7 @@ Recommended type groups:
 - finding/review types
 - job/output types
 - text workflow request/response types
+- CSV workflow request/response types
 - document workflow request/response types
 - structured workflow request/response types
 - image workflow request/response types
@@ -450,6 +477,14 @@ Recommended type groups:
 3. submit `POST /api/v1/jobs/{job_id}/review`
 4. submit `POST /api/v1/workflows/text/transform`
 5. render `output_text` and replacement summary
+
+### CSV Flow
+
+1. upload file to `POST /api/v1/workflows/csv/analyze`
+2. render findings grouped by row/column metadata
+3. submit `POST /api/v1/jobs/{job_id}/review`
+4. upload the same file to `POST /api/v1/workflows/csv/transform-job`
+5. use `output_rows` for preview and `output_csv` for formula-safe download
 
 ### PDF Document Flow
 
@@ -493,6 +528,9 @@ Current runtime limits can be configured, but frontend should assume these exist
 - bulk text item count limit
 - bulk text per-item character limit
 - bulk text total character limit
+- CSV row limit
+- CSV column limit
+- CSV total character limit
 - document page count limit
 - document extracted character limit
 - structured payload node limit
@@ -533,6 +571,7 @@ Frontend can confidently build against:
 - studio asset CRUD/search
 - persisted jobs and review
 - text analyze/review/transform
+- CSV analyze/review/transform-job
 - document analyze/review/transform-job
 - structured analyze/review/transform-job
 - image analyze/review/transform-job
@@ -548,7 +587,7 @@ Do not design frontend dependencies on these yet:
 - bulk analyze-transform
 - scanned PDF OCR workflows
 - native sanitized PDF rewrite output
-- CSV/DataFrame structured workflows
+- DataFrame-native workflows
 - auth and workspace isolation
 - background job orchestration
 - export/reporting systems

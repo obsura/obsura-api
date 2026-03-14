@@ -53,6 +53,9 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_PRESIDIO_ANONYMIZER_BACKEND",
         "OBSURA_TEXT_HASH_SALT",
         "OBSURA_PRESIDIO_HASH_SALT",
+        "OBSURA_MAX_CSV_ROWS",
+        "OBSURA_MAX_CSV_COLUMNS",
+        "OBSURA_MAX_CSV_CHARACTERS",
     ):
         monkeypatch.delenv(key, raising=False)
     get_settings.cache_clear()
@@ -195,6 +198,18 @@ def test_reads_document_extractor_settings(monkeypatch) -> None:
     settings = Settings(_env_file=None)
 
     assert settings.document_extractor_backend == "pypdf"
+
+
+def test_reads_csv_limits(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_MAX_CSV_ROWS", "12")
+    monkeypatch.setenv("OBSURA_MAX_CSV_COLUMNS", "8")
+    monkeypatch.setenv("OBSURA_MAX_CSV_CHARACTERS", "2048")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.max_csv_rows == 12
+    assert settings.max_csv_columns == 8
+    assert settings.max_csv_characters == 2048
 
 
 def test_presidio_requires_model_for_each_configured_language(monkeypatch) -> None:

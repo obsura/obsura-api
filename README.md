@@ -2,7 +2,8 @@
 
 `obsura-api` is the backend workflow and orchestration layer for Obsura. It is
 responsible for review-first sanitization flows, persistent studio assets,
-search, and job history across text, screenshots, and image-region workflows.
+search, and job history across text, CSV, PDF, screenshots, and image-region
+workflows.
 
 ## Current Scope
 
@@ -14,9 +15,11 @@ This repository currently provides:
 - persisted bulk text submissions that group multiple reviewable child jobs
 - bulk review and bulk text transform across one persisted bulk run
 - built-in, custom, exact-value, and manual text detection
+- review-first CSV file workflows with cell-level findings and safe export
 - reviewable job history and finding decisions
 - text transformation with semantic, custom, partial-mask, and stable-alias
   modes
+- review-first PDF text extraction workflows for text-based documents
 - image-region transformation for blur, pixelation, masks, and overlays using
   manual or pre-supplied regions
 - optional Presidio-backed NLP PII detection layered onto text and OCR flows
@@ -31,8 +34,21 @@ can also be augmented with an optional Presidio backend.
 
 ## Standards Alignment
 
-This repository follows the product direction in the local root Markdown files
-and the cross-project guidance from `obsura-standards`.
+This repository follows the product direction in the repository docs and the
+cross-project guidance from `obsura-standards`.
+
+Primary project documents:
+
+- [docs/README.md](docs/README.md)
+- [docs/product/REQUIREMENTS.md](docs/product/REQUIREMENTS.md)
+- [docs/product/SCENARIOS.md](docs/product/SCENARIOS.md)
+- [docs/product/NON_GOALS.md](docs/product/NON_GOALS.md)
+- [docs/architecture/STACK.md](docs/architecture/STACK.md)
+- [docs/architecture/TOOLING.md](docs/architecture/TOOLING.md)
+- [docs/operations/CICD.md](docs/operations/CICD.md)
+- [docs/legal/OPEN_SOURCE_POLICY.md](docs/legal/OPEN_SOURCE_POLICY.md)
+- [docs/legal/THIRD_PARTY_NOTICES.md](docs/legal/THIRD_PARTY_NOTICES.md)
+- [docs/legal/DEPENDENCY_LICENSE_INVENTORY.md](docs/legal/DEPENDENCY_LICENSE_INVENTORY.md)
 
 The main local deviation is the runtime stack:
 
@@ -42,6 +58,17 @@ The main local deviation is the runtime stack:
   image-processing fit
 
 That deviation is explicit rather than accidental.
+
+## Open Source and Community
+
+The repository-level open-source governance files are:
+
+- [LICENSE](LICENSE)
+- [.github/CODE_OF_CONDUCT.md](.github/CODE_OF_CONDUCT.md)
+- [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
+- [.github/SECURITY.md](.github/SECURITY.md)
+- [.github/SUPPORT.md](.github/SUPPORT.md)
+- [.github/GOVERNANCE.md](.github/GOVERNANCE.md)
 
 ## Project Layout
 
@@ -66,7 +93,8 @@ tests/        behavior-focused API and service tests
 7. Regenerate API artifacts with `python -m obsura_api.tools.api_artifacts`.
 
 The default database is SQLite for local execution and tests. Production should
-use PostgreSQL as defined in [STACK.md](STACK.md).
+use PostgreSQL as defined in
+[docs/architecture/STACK.md](docs/architecture/STACK.md).
 
 Alembic migrations are now the authoritative schema mechanism for the project.
 The API no longer treats SQLAlchemy `create_all()` as the production schema
@@ -94,6 +122,8 @@ Current operational endpoints:
 - `GET /api/v1/ready` for dependency-aware readiness
 - `GET /api/v1/version` for runtime version and backend metadata
 - `POST /api/v1/bulk/text/analyze` for review-first bulk text analysis
+- `POST /api/v1/workflows/csv/analyze` and related CSV transform routes
+- `POST /api/v1/workflows/documents/analyze` and related PDF transform routes
 - `GET /api/v1/bulk/jobs` and `GET /api/v1/bulk/jobs/{bulk_id}` for bulk run
   inspection
 - `POST /api/v1/bulk/jobs/{bulk_id}/review` for bulk finding review
@@ -212,6 +242,11 @@ deployments:
 - `OBSURA_MAX_BULK_TEXT_ITEM_CHARACTERS` limits characters per bulk text item
 - `OBSURA_MAX_BULK_TEXT_TOTAL_CHARACTERS` limits the combined payload size for
   bulk text analysis
+- `OBSURA_MAX_CSV_ROWS` limits CSV row count
+- `OBSURA_MAX_CSV_COLUMNS` limits CSV column count
+- `OBSURA_MAX_CSV_CHARACTERS` limits CSV total character count
+- `OBSURA_MAX_DOCUMENT_PAGES` limits PDF page count
+- `OBSURA_MAX_DOCUMENT_EXTRACTED_CHARACTERS` limits extracted PDF text
 - image uploads must use a supported image MIME type
 - public API responses expose storage-root relative file references rather than
   raw absolute filesystem paths

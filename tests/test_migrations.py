@@ -16,7 +16,7 @@ def test_create_alembic_config_uses_packaged_scripts() -> None:
     assert config.get_main_option("script_location").replace("\\", "/").endswith(
         "src/obsura_api/db/alembic"
     )
-    assert get_head_revision("sqlite:///./example.db") == "b91e0c9f4c12"
+    assert get_head_revision("sqlite:///./example.db") == "c4b7d2e8a193"
 
 
 def test_ensure_database_schema_rejects_wrong_revision(tmp_path) -> None:

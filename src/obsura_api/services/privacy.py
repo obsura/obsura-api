@@ -8,6 +8,15 @@ from sqlalchemy.orm import Session
 from obsura_api.db.models import Job, JobFinding, JobOutput
 
 SAFE_FINDING_METADATA_KEYS = {
+    "csv_cell_character_count",
+    "csv_cell_hash",
+    "csv_column_index",
+    "csv_column_name",
+    "csv_delimiter",
+    "csv_has_header",
+    "csv_kind",
+    "csv_quotechar",
+    "csv_row_number",
     "document_kind",
     "document_page_number",
     "document_page_label",
