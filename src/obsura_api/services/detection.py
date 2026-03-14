@@ -22,6 +22,7 @@ from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingRecord, ManualTextSpan, TextAnalysisRequest, TextAnalysisResponse
 from obsura_api.services.studio import StudioService
 from obsura_api.services.utils import hash_value, preview_value, summarize_findings, unique_ids
+from obsura_api.services.providers.pii import DetectedPIIEntity, NoOpPIIDetector, PIIDetector
 
 
 @dataclass(slots=True)
@@ -160,10 +161,16 @@ BUILT_IN_PATTERNS: list[BuiltInPattern] = [
 class TextDetectionService:
     """Analyze text content into reviewable findings and optional job records."""
 
-    def __init__(self, session: Session, settings: Settings) -> None:
+    def __init__(
+        self,
+        session: Session,
+        settings: Settings,
+        pii_detector: PIIDetector | None = None,
+    ) -> None:
         self.session = session
         self.settings = settings
         self.studio = StudioService(session)
+        self.pii_detector = pii_detector or NoOpPIIDetector()
 
     def analyze(self, request: TextAnalysisRequest) -> TextAnalysisResponse:
         (
@@ -226,6 +233,13 @@ class TextDetectionService:
         findings: list[FindingRecord] = []
         if apply_builtins:
             findings.extend(self._detect_built_ins(content, default_transformation))
+            findings.extend(
+                self._detect_pii_entities(
+                    content,
+                    default_transformation,
+                    existing_findings=findings,
+                ),
+            )
 
         for pattern in patterns:
             matcher = PatternMatcherDefinition.model_validate(pattern.matcher)
@@ -392,8 +406,41 @@ class TextDetectionService:
                         entity_type=definition.entity_type,
                         entity_name=definition.entity_name,
                         transformation=transformation,
+                        confidence=1.0,
                     ),
                 )
+        return findings
+
+    def _detect_pii_entities(
+        self,
+        text: str,
+        default_transformation: TransformationRule | None,
+        *,
+        existing_findings: list[FindingRecord],
+    ) -> list[FindingRecord]:
+        if not self.pii_detector.supported:
+            return []
+
+        findings: list[FindingRecord] = []
+        for entity in self.pii_detector.detect_entities(text):
+            if self._overlaps_existing_span(entity, existing_findings):
+                continue
+            findings.append(
+                self._build_text_finding(
+                    text=text,
+                    start_index=entity.start_index,
+                    end_index=entity.end_index,
+                    source=FindingSource.BUILT_IN,
+                    entity_type=entity.entity_type,
+                    entity_name=self._pii_entity_name(entity),
+                    transformation=default_transformation
+                    or TransformationRule(
+                        mode=TransformationMode.SEMANTIC,
+                        semantic_label=entity.entity_type,
+                    ),
+                    confidence=entity.confidence,
+                ),
+            )
         return findings
 
     def _detect_matcher(
@@ -419,6 +466,7 @@ class TextDetectionService:
                         entity_type=entity_type,
                         entity_name=entity_name,
                         transformation=transformation,
+                        confidence=1.0,
                     ),
                 )
             return findings
@@ -437,6 +485,7 @@ class TextDetectionService:
                         entity_type=entity_type,
                         entity_name=entity_name,
                         transformation=transformation,
+                        confidence=1.0,
                     ),
                 )
         return findings
@@ -453,6 +502,7 @@ class TextDetectionService:
                     entity_type=span.entity_type,
                     entity_name=span.entity_name or span.entity_type,
                     transformation=span.transformation,
+                    confidence=1.0,
                 ),
             )
         return findings
@@ -467,6 +517,7 @@ class TextDetectionService:
         entity_type: str,
         entity_name: str,
         transformation: TransformationRule | None,
+        confidence: float,
     ) -> FindingRecord:
         matched_text = text[start_index:end_index]
         return FindingRecord(
@@ -478,8 +529,38 @@ class TextDetectionService:
             end_index=end_index,
             matched_text_preview=preview_value(matched_text),
             matched_text_hash=hash_value(matched_text),
+            confidence=confidence,
             transformation=transformation,
         )
+
+    def _pii_entity_name(self, entity: DetectedPIIEntity) -> str:
+        overrides = {
+            "EMAIL_ADDRESS": "Email address",
+            "IP_ADDRESS": "IP address",
+            "URL": "URL",
+            "PHONE_NUMBER": "Phone number",
+            "PERSON": "Person name",
+            "LOCATION": "Location",
+            "DATE_TIME": "Date/time",
+            "CREDIT_CARD": "Credit card number",
+            "US_SSN": "US social security number",
+            "IBAN_CODE": "IBAN code",
+        }
+        if entity.entity_type in overrides:
+            return overrides[entity.entity_type]
+        return entity.entity_type.replace("_", " ").title()
+
+    def _overlaps_existing_span(
+        self,
+        entity: DetectedPIIEntity,
+        findings: list[FindingRecord],
+    ) -> bool:
+        for finding in findings:
+            if finding.start_index is None or finding.end_index is None:
+                continue
+            if entity.start_index < finding.end_index and entity.end_index > finding.start_index:
+                return True
+        return False
 
     def _deduplicate_findings(self, findings: list[FindingRecord]) -> list[FindingRecord]:
         deduplicated: list[FindingRecord] = []

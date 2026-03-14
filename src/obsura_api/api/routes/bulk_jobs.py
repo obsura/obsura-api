@@ -8,8 +8,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from obsura_api.api.dependencies import get_db_session, get_pagination_params, get_settings
+from obsura_api.api.dependencies import get_container, get_db_session, get_pagination_params, get_settings
 from obsura_api.api.responses import success_response
+from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings
 from obsura_api.domain.bulk import (
     BulkJobRead,
@@ -27,6 +28,7 @@ router = APIRouter(prefix="/bulk", tags=["bulk-jobs"])
 SessionDep = Annotated[Session, Depends(get_db_session)]
 PaginationDep = Annotated[PaginationParams, Depends(get_pagination_params)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+ContainerDep = Annotated[AppContainer, Depends(get_container)]
 
 
 @router.post(
@@ -38,10 +40,17 @@ def analyze_bulk_text(
     payload: BulkTextAnalyzeRequest,
     session: SessionDep,
     settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[BulkJobRead]:
     """Analyze many text items, persist one bulk job, and create reviewable child jobs."""
 
-    return success_response(BulkJobService(session, settings).analyze_text(payload))
+    return success_response(
+        BulkJobService(
+            session,
+            settings,
+            pii_detector=container.pii_detector,
+        ).analyze_text(payload),
+    )
 
 
 @router.get("/jobs", response_model=ApiResponse[list[BulkJobSummaryRead]])
@@ -49,10 +58,15 @@ def list_bulk_jobs(
     session: SessionDep,
     pagination: PaginationDep,
     settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[list[BulkJobSummaryRead]]:
     """List persisted bulk text jobs with summary counts and status."""
 
-    items, pagination_meta = BulkJobService(session, settings).list_bulk_jobs(pagination)
+    items, pagination_meta = BulkJobService(
+        session,
+        settings,
+        pii_detector=container.pii_detector,
+    ).list_bulk_jobs(pagination)
     return success_response(items, pagination=pagination_meta)
 
 
@@ -61,10 +75,17 @@ def get_bulk_job(
     bulk_id: UUID,
     session: SessionDep,
     settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[BulkJobRead]:
     """Fetch one persisted bulk text job in detail, including per-item outcomes."""
 
-    return success_response(BulkJobService(session, settings).get_bulk_job(str(bulk_id)))
+    return success_response(
+        BulkJobService(
+            session,
+            settings,
+            pii_detector=container.pii_detector,
+        ).get_bulk_job(str(bulk_id)),
+    )
 
 
 @router.post("/jobs/{bulk_id}/review", response_model=ApiResponse[BulkReviewResponse])
@@ -73,10 +94,17 @@ def review_bulk_job(
     payload: BulkJobReviewRequest,
     session: SessionDep,
     settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[BulkReviewResponse]:
     """Apply review decisions across child jobs that belong to one bulk run."""
 
-    return success_response(BulkJobService(session, settings).review_bulk_job(str(bulk_id), payload))
+    return success_response(
+        BulkJobService(
+            session,
+            settings,
+            pii_detector=container.pii_detector,
+        ).review_bulk_job(str(bulk_id), payload),
+    )
 
 
 @router.post("/text/transform", response_model=ApiResponse[BulkTextTransformResponse])
@@ -84,7 +112,14 @@ def transform_bulk_text(
     payload: BulkTextTransformRequest,
     session: SessionDep,
     settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[BulkTextTransformResponse]:
     """Transform text outputs across one persisted bulk run while preserving per-item outcomes."""
 
-    return success_response(BulkJobService(session, settings).transform_text(payload))
+    return success_response(
+        BulkJobService(
+            session,
+            settings,
+            pii_detector=container.pii_detector,
+        ).transform_text(payload),
+    )

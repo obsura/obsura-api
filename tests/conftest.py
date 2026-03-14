@@ -17,6 +17,7 @@ def client(tmp_path: Path) -> TestClient:
         auto_create_schema=True,
         ocr_backend="noop",
         face_detector_backend="noop",
+        pii_backend="noop",
         _env_file=None,
     )
     app = create_app(settings)

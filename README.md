@@ -19,13 +19,15 @@ This repository currently provides:
   modes
 - image-region transformation for blur, pixelation, masks, and overlays using
   manual or pre-supplied regions
+- optional Presidio-backed NLP PII detection layered onto text and OCR flows
 - pluggable provider boundaries for OCR and face detection
 - optional Tesseract-backed OCR for screenshot text detection and reviewable
   OCR-derived image regions
 
 Automatic OCR and automatic face detection remain provider-based. The default
 implementation keeps those boundaries explicit, while the OCR path now supports
-an optional Tesseract backend for screenshot-first workflows.
+an optional Tesseract backend for screenshot-first workflows. Text PII detection
+can also be augmented with an optional Presidio backend.
 
 ## Standards Alignment
 

@@ -30,6 +30,7 @@ from obsura_api.db.session import (
 from obsura_api.domain.operational import ServiceRootInfo
 from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import build_ocr_provider
+from obsura_api.services.providers.pii import build_pii_detector
 from obsura_api.services.storage import StorageService
 
 logger = logging.getLogger(__name__)
@@ -124,8 +125,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     storage.assert_ready()
     ocr_provider = build_ocr_provider(settings)
     face_detector = build_face_detector(settings)
+    pii_detector = build_pii_detector(settings)
     logger.info("Using `%s` OCR backend", ocr_provider.name)
     logger.info("Using `%s` face detector backend", face_detector.name)
+    logger.info("Using `%s` PII detector backend", pii_detector.name)
 
     app = FastAPI(
         title=settings.app_name,
@@ -171,6 +174,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             version=f"v{__version__}",
             ocr_available=ocr_provider.supported,
             face_detection_available=face_detector.supported,
+            pii_available=pii_detector.supported,
         )
 
     app.state.container = AppContainer(
@@ -180,6 +184,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         storage=storage,
         ocr_provider=ocr_provider,
         face_detector=face_detector,
+        pii_detector=pii_detector,
     )
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)

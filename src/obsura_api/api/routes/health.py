@@ -70,7 +70,9 @@ def version(settings: SettingsDep, container: ContainerDep) -> ApiResponse[Servi
             schema_head=schema_state.expected_revision,
             ocr_backend=container.ocr_provider.name,
             face_detector_backend=container.face_detector.name,
+            pii_backend=container.pii_detector.name,
             ocr_available=container.ocr_provider.supported,
             face_detection_available=container.face_detector.supported,
+            pii_available=container.pii_detector.supported,
         ),
     )

@@ -13,7 +13,8 @@ RUN python -m venv /opt/venv \
 COPY pyproject.toml README.md ./
 COPY src ./src
 
-RUN pip install .
+RUN pip install .[presidio] \
+    && python -m spacy download en_core_web_sm
 
 
 FROM python:3.13-slim AS runtime

@@ -7,8 +7,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from obsura_api.api.dependencies import get_db_session, get_settings
+from obsura_api.api.dependencies import get_container, get_db_session, get_settings
 from obsura_api.api.responses import success_response
+from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings
 from obsura_api.domain.common import ApiResponse
 from obsura_api.domain.workflows import (
@@ -23,6 +24,7 @@ from obsura_api.services.text_transformations import TextTransformationService
 router = APIRouter(prefix="/workflows/text", tags=["text-workflows"])
 SessionDep = Annotated[Session, Depends(get_db_session)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+ContainerDep = Annotated[AppContainer, Depends(get_container)]
 
 
 @router.post("/analyze", response_model=ApiResponse[TextAnalysisResponse])
@@ -30,10 +32,17 @@ def analyze_text(
     payload: TextAnalysisRequest,
     session: SessionDep,
     settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[TextAnalysisResponse]:
     """Analyze text-like content into reviewable findings and optionally persist a job."""
 
-    return success_response(TextDetectionService(session, settings).analyze(payload))
+    return success_response(
+        TextDetectionService(
+            session,
+            settings,
+            pii_detector=container.pii_detector,
+        ).analyze(payload),
+    )
 
 
 @router.post("/transform", response_model=ApiResponse[TextTransformResponse])
@@ -51,10 +60,15 @@ def analyze_and_transform_text(
     payload: TextAnalysisRequest,
     session: SessionDep,
     settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[TextTransformResponse]:
     """Run a one-shot analyze-plus-transform flow while still producing reviewable findings."""
 
-    detector = TextDetectionService(session, settings)
+    detector = TextDetectionService(
+        session,
+        settings,
+        pii_detector=container.pii_detector,
+    )
     analysis = detector.analyze(payload)
     transformer = TextTransformationService(session)
     output_text, replacements = transformer.apply_findings(

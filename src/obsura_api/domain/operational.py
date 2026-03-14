@@ -15,6 +15,7 @@ class ServiceRootInfo(BaseModel):
     version: str
     ocr_available: bool
     face_detection_available: bool
+    pii_available: bool
 
 
 class ServiceVersionInfo(BaseModel):
@@ -28,5 +29,7 @@ class ServiceVersionInfo(BaseModel):
     schema_head: str
     ocr_backend: str
     face_detector_backend: str
+    pii_backend: str
     ocr_available: bool
     face_detection_available: bool
+    pii_available: bool

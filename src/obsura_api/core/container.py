@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from obsura_api.core.settings import Settings
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.providers.ocr import OCRProvider
+from obsura_api.services.providers.pii import PIIDetector
 from obsura_api.services.storage import StorageService
 
 
@@ -23,4 +24,4 @@ class AppContainer:
     storage: StorageService
     ocr_provider: OCRProvider
     face_detector: FaceDetector
-
+    pii_detector: PIIDetector
