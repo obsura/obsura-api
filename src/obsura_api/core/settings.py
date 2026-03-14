@@ -77,6 +77,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "OBSURA_CORS_ALLOWED_ORIGINS",
             "CORS_ALLOWED_ORIGINS",
+            "OBSURA_ALLOWED_HOSTS",
+            "ALLOWED_HOSTS",
         ),
     )
     cors_allow_credentials: bool = Field(

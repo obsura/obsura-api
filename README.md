@@ -80,6 +80,10 @@ Development/test convenience:
   are allowed by default through CORS
 - override allowed origins with `OBSURA_CORS_ALLOWED_ORIGINS` using either a
   comma-separated list or a JSON array string
+- supported aliases for that setting are `CORS_ALLOWED_ORIGINS`,
+  `OBSURA_ALLOWED_HOSTS`, and `ALLOWED_HOSTS`
+- because this feeds CORS, values must be full origins such as
+  `https://obsura.one`, not bare host names
 
 Current operational endpoints:
 

@@ -24,6 +24,8 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_AUTO_CREATE_SCHEMA",
         "OBSURA_CORS_ALLOWED_ORIGINS",
         "CORS_ALLOWED_ORIGINS",
+        "OBSURA_ALLOWED_HOSTS",
+        "ALLOWED_HOSTS",
         "OBSURA_CORS_ALLOW_CREDENTIALS",
         "CORS_ALLOW_CREDENTIALS",
         "OBSURA_OCR_BACKEND",
@@ -133,6 +135,20 @@ def test_parses_comma_separated_cors_origins(monkeypatch) -> None:
     assert settings.cors_allowed_origins == (
         "http://127.0.0.1:3000",
         "http://localhost:5173",
+    )
+
+
+def test_parses_comma_separated_allowed_hosts_alias(monkeypatch) -> None:
+    monkeypatch.setenv(
+        "ALLOWED_HOSTS",
+        "https://obsura.one/, https://api.obsura.one",
+    )
+
+    settings = Settings(_env_file=None)
+
+    assert settings.cors_allowed_origins == (
+        "https://obsura.one",
+        "https://api.obsura.one",
     )
 
 
