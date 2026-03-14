@@ -27,6 +27,7 @@ from obsura_api.db.session import (
     verify_database_connection,
 )
 from obsura_api.domain.operational import ServiceRootInfo
+from obsura_api.services.providers.documents import build_document_extractor
 from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import build_ocr_provider
 from obsura_api.services.providers.pii import build_pii_detector
@@ -59,6 +60,10 @@ OPENAPI_TAGS = [
         "description": "Review history, job inspection, and review-decision updates.",
     },
     {
+        "name": "document-workflows",
+        "description": "Review-first PDF text extraction workflows for safe document analysis and sanitized export.",
+    },
+    {
         "name": "text-workflows",
         "description": "Review-first text detection and transformation workflows for pasted text, logs, and structured technical content.",
     },
@@ -79,6 +84,7 @@ The API supports:
 - persistent studio assets for custom detection and reusable configurations
 - persisted bulk text submissions that group many reviewable child jobs
 - reviewable jobs and run history
+- PDF text extraction workflows for review-first document sanitization
 - text-first and screenshot-first sanitization workflows
 - structured JSON analyze/review/transform workflows
 - transformation behavior beyond plain placeholder replacement
@@ -144,11 +150,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         close = getattr(session, "close", None)
         if callable(close):
             close()
+    document_extractor = build_document_extractor(settings)
     ocr_provider = build_ocr_provider(settings)
     face_detector = build_face_detector(settings)
     pii_detector = build_pii_detector(settings)
     text_anonymizer = build_text_anonymizer(settings)
     PILImage.MAX_IMAGE_PIXELS = settings.max_image_pixels
+    logger.info(
+        "Using `%s` document extractor backend (PDF available: %s)",
+        document_extractor.name,
+        document_extractor.supported,
+    )
     logger.info("Using `%s` OCR backend", ocr_provider.name)
     logger.info("Using `%s` face detector backend", face_detector.name)
     logger.info("Using `%s` PII detector backend", pii_detector.name)
@@ -230,6 +242,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         engine=engine,
         session_factory=session_factory,
         storage=storage,
+        document_extractor=document_extractor,
         ocr_provider=ocr_provider,
         face_detector=face_detector,
         pii_detector=pii_detector,

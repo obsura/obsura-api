@@ -54,7 +54,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             "kind": "exact",
             "value": "internal.example.com",
             "case_sensitive": False,
-            "applies_to": ["text", "structured_text"],
+            "applies_to": ["text", "structured_text", "document"],
         },
         "transformation": {
             "mode": "semantic",
@@ -77,7 +77,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             "mode": "semantic",
             "semantic_label": "PRIVATE_HOST",
         },
-        "applies_to": ["text", "structured_text"],
+        "applies_to": ["text", "structured_text", "document"],
     },
     ("POST", "/api/v1/studio/entities"): {
         "name": "Customer Names",
@@ -90,7 +90,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
                 "kind": "value_list",
                 "values": ["Acme Corp", "Globex"],
                 "case_sensitive": False,
-                "applies_to": ["text", "structured_text"],
+                "applies_to": ["text", "structured_text", "document"],
             }
         ],
         "transformation": {
@@ -304,6 +304,17 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
         "include_pending": False,
         "persist_output": True,
     },
+    ("POST", "/api/v1/workflows/documents/transform-job"): {
+        "job_id": "{{jobId}}",
+        "finding_overrides": [
+            {
+                "finding_id": "{{findingId}}",
+                "decision": "approved",
+            }
+        ],
+        "include_pending": False,
+        "persist_output": True,
+    },
     ("POST", "/api/v1/workflows/images/transform-job"): {
         "job_id": "{{jobId}}",
         "finding_overrides": [
@@ -325,6 +336,59 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
 }
 
 FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
+    ("POST", "/api/v1/workflows/documents/analyze"): {
+        "manifest_json": json.dumps(
+            {
+                "title": "Customer contract review",
+                "pattern_ids": ["{{patternId}}"],
+                "custom_entity_ids": ["{{entityId}}"],
+                "configuration_ids": ["{{configurationId}}"],
+                "pii_detection": {
+                    "language": "en",
+                    "entity_allow_list": ["EMAIL_ADDRESS", "PERSON"],
+                    "context_words": ["customer", "contract", "contact"],
+                },
+                "apply_builtins": True,
+                "persist_job": True,
+            },
+            indent=2,
+        ),
+    },
+    ("POST", "/api/v1/workflows/documents/transform"): {
+        "manifest_json": json.dumps(
+            {
+                "title": "Customer contract export",
+                "pattern_ids": ["{{patternId}}"],
+                "custom_entity_ids": ["{{entityId}}"],
+                "configuration_ids": ["{{configurationId}}"],
+                "pii_detection": {
+                    "language": "en",
+                    "entity_allow_list": ["EMAIL_ADDRESS", "PERSON"],
+                    "context_words": ["customer", "contract", "contact"],
+                },
+                "exact_values": ["secret"],
+                "apply_builtins": True,
+                "persist_job": True,
+            },
+            indent=2,
+        ),
+    },
+    ("POST", "/api/v1/workflows/documents/transform-job"): {
+        "manifest_json": json.dumps(
+            {
+                "job_id": "{{jobId}}",
+                "finding_overrides": [
+                    {
+                        "finding_id": "{{findingId}}",
+                        "decision": "approved",
+                    }
+                ],
+                "include_pending": False,
+                "persist_output": True,
+            },
+            indent=2,
+        ),
+    },
     ("POST", "/api/v1/workflows/images/analyze"): {
         "manifest_json": json.dumps(
             {
@@ -490,6 +554,21 @@ REQUEST_EXTRACTORS: dict[tuple[str, str], list[dict[str, Any]]] = {
     ],
     ("POST", "/api/v1/workflows/text/analyze-transform"): [
         {"variable": "jobId", "paths": [["data", "job_id"]]},
+    ],
+    ("POST", "/api/v1/workflows/documents/analyze"): [
+        {"variable": "jobId", "paths": [["data", "job_id"]]},
+        {"variable": "findingId", "paths": [["data", "findings", 0, "id"]]},
+        {"variable": "findingIdsJson", "paths": [["data", "findings", "__collect__", "id"]]},
+    ],
+    ("POST", "/api/v1/workflows/documents/transform"): [
+        {"variable": "jobId", "paths": [["data", "job_id"]]},
+        {"variable": "findingId", "paths": [["data", "findings", 0, "id"]]},
+        {"variable": "findingIdsJson", "paths": [["data", "findings", "__collect__", "id"]]},
+    ],
+    ("POST", "/api/v1/workflows/documents/transform-job"): [
+        {"variable": "jobId", "paths": [["data", "job_id"]]},
+        {"variable": "findingId", "paths": [["data", "findings", 0, "id"]]},
+        {"variable": "findingIdsJson", "paths": [["data", "findings", "__collect__", "id"]]},
     ],
     ("POST", "/api/v1/workflows/structured/analyze"): [
         {"variable": "jobId", "paths": [["data", "job_id"]]},
@@ -756,11 +835,12 @@ def build_postman_collection(openapi_document: dict[str, Any]) -> dict[str, Any]
                 "2. Run create endpoints for patterns, entities, or configurations.\n"
                 "3. The collection automatically captures IDs such as `patternId`, "
                 "`configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n"
-                "4. Follow the text, structured, or image workflow requests in order without manually copying IDs.\n"
+                "4. Follow the text, document, structured, or image workflow requests in order without manually copying IDs.\n"
                 "5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n"
-                "6. Bulk text responses keep parent bulk state and per-item outcomes separate.\n"
-                "7. Structured workflow examples include nested JSON payloads for field-level review.\n"
-                "8. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing."
+                "6. PDF document examples use multipart upload plus `manifest_json` and require resubmitting the file for reviewed transforms.\n"
+                "7. Bulk text responses keep parent bulk state and per-item outcomes separate.\n"
+                "8. Structured workflow examples include nested JSON payloads for field-level review.\n"
+                "9. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing."
             ),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "_postman_id": "obsura-api-collection",

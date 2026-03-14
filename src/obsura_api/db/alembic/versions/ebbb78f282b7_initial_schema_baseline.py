@@ -66,7 +66,14 @@ def upgrade() -> None:
             ),
             sa.Column(
                 "content_type",
-                sa.Enum("TEXT", "STRUCTURED_TEXT", "SCREENSHOT", "IMAGE", name="contenttype"),
+                sa.Enum(
+                    "TEXT",
+                    "STRUCTURED_TEXT",
+                    "DOCUMENT",
+                    "SCREENSHOT",
+                    "IMAGE",
+                    name="contenttype",
+                ),
                 nullable=False,
             ),
             sa.Column("source_text", sa.Text(), nullable=True),
@@ -194,7 +201,14 @@ def upgrade() -> None:
             sa.Column("job_id", sa.String(length=36), nullable=False),
             sa.Column(
                 "content_type",
-                sa.Enum("TEXT", "STRUCTURED_TEXT", "SCREENSHOT", "IMAGE", name="contenttype"),
+                sa.Enum(
+                    "TEXT",
+                    "STRUCTURED_TEXT",
+                    "DOCUMENT",
+                    "SCREENSHOT",
+                    "IMAGE",
+                    name="contenttype",
+                ),
                 nullable=False,
             ),
             sa.Column("output_text", sa.Text(), nullable=True),

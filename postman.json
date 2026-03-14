@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Obsura API",
-    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text, structured, or image workflow requests in order without manually copying IDs.\n5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n6. Bulk text responses keep parent bulk state and per-item outcomes separate.\n7. Structured workflow examples include nested JSON payloads for field-level review.\n8. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing.",
+    "description": "Professional Postman collection for Obsura API.\n\nQuick start:\n1. Set `baseUrl` to your target deployment.\n2. Run create endpoints for patterns, entities, or configurations.\n3. The collection automatically captures IDs such as `patternId`, `configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n4. Follow the text, document, structured, or image workflow requests in order without manually copying IDs.\n5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n6. PDF document examples use multipart upload plus `manifest_json` and require resubmitting the file for reviewed transforms.\n7. Bulk text responses keep parent bulk state and per-item outcomes separate.\n8. Structured workflow examples include nested JSON payloads for field-level review.\n9. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "obsura-api-collection"
   },
@@ -742,7 +742,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Infrastructure Domain Pattern\",\n  \"description\": \"Protect an internal domain across text workflows.\",\n  \"category\": \"infrastructure\",\n  \"tags\": [\n    \"ops\",\n    \"safe-share\"\n  ],\n  \"is_active\": true,\n  \"matcher\": {\n    \"kind\": \"exact\",\n    \"value\": \"internal.example.com\",\n    \"case_sensitive\": false,\n    \"applies_to\": [\n      \"text\",\n      \"structured_text\"\n    ]\n  },\n  \"transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"INTERNAL_DOMAIN\"\n  },\n  \"scope\": {\n    \"workspace\": \"default\"\n  }\n}",
+              "raw": "{\n  \"name\": \"Infrastructure Domain Pattern\",\n  \"description\": \"Protect an internal domain across text workflows.\",\n  \"category\": \"infrastructure\",\n  \"tags\": [\n    \"ops\",\n    \"safe-share\"\n  ],\n  \"is_active\": true,\n  \"matcher\": {\n    \"kind\": \"exact\",\n    \"value\": \"internal.example.com\",\n    \"case_sensitive\": false,\n    \"applies_to\": [\n      \"text\",\n      \"structured_text\",\n      \"document\"\n    ]\n  },\n  \"transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"INTERNAL_DOMAIN\"\n  },\n  \"scope\": {\n    \"workspace\": \"default\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1158,7 +1158,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Selected Internal Hostname\",\n  \"selected_value\": \"vps-prod-01.internal\",\n  \"description\": \"Created from a manual selection in a screenshot or pasted text.\",\n  \"category\": \"hosts\",\n  \"tags\": [\n    \"selection\",\n    \"ops\"\n  ],\n  \"transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"PRIVATE_HOST\"\n  },\n  \"applies_to\": [\n    \"text\",\n    \"structured_text\"\n  ]\n}",
+              "raw": "{\n  \"name\": \"Selected Internal Hostname\",\n  \"selected_value\": \"vps-prod-01.internal\",\n  \"description\": \"Created from a manual selection in a screenshot or pasted text.\",\n  \"category\": \"hosts\",\n  \"tags\": [\n    \"selection\",\n    \"ops\"\n  ],\n  \"transformation\": {\n    \"mode\": \"semantic\",\n    \"semantic_label\": \"PRIVATE_HOST\"\n  },\n  \"applies_to\": [\n    \"text\",\n    \"structured_text\",\n    \"document\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1198,7 +1198,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Customer Names\",\n  \"description\": \"Protect known customer names with a stable alias.\",\n  \"category\": \"customers\",\n  \"tags\": [\n    \"crm\"\n  ],\n  \"is_active\": true,\n  \"detection_definitions\": [\n    {\n      \"kind\": \"value_list\",\n      \"values\": [\n        \"Acme Corp\",\n        \"Globex\"\n      ],\n      \"case_sensitive\": false,\n      \"applies_to\": [\n        \"text\",\n        \"structured_text\"\n      ]\n    }\n  ],\n  \"transformation\": {\n    \"mode\": \"stable_alias\",\n    \"alias_prefix\": \"CUSTOMER\"\n  },\n  \"scope\": {\n    \"workspace\": \"default\"\n  }\n}",
+              "raw": "{\n  \"name\": \"Customer Names\",\n  \"description\": \"Protect known customer names with a stable alias.\",\n  \"category\": \"customers\",\n  \"tags\": [\n    \"crm\"\n  ],\n  \"is_active\": true,\n  \"detection_definitions\": [\n    {\n      \"kind\": \"value_list\",\n      \"values\": [\n        \"Acme Corp\",\n        \"Globex\"\n      ],\n      \"case_sensitive\": false,\n      \"applies_to\": [\n        \"text\",\n        \"structured_text\",\n        \"document\"\n      ]\n    }\n  ],\n  \"transformation\": {\n    \"mode\": \"stable_alias\",\n    \"alias_prefix\": \"CUSTOMER\"\n  },\n  \"scope\": {\n    \"workspace\": \"default\"\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2332,6 +2332,342 @@
                   "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
                   "};",
                   "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Document Workflows",
+      "description": "Review-first PDF text extraction workflows for safe document analysis and sanitized export.",
+      "item": [
+        {
+          "name": "Analyze Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Analyze Document\n\nAnalyze an uploaded PDF into page-aware review findings.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/documents/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "documents",
+                "analyze"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "manifest_json",
+                  "type": "text",
+                  "value": "{\n  \"title\": \"Customer contract review\",\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"EMAIL_ADDRESS\",\n      \"PERSON\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"contract\",\n      \"contact\"\n    ]\n  },\n  \"apply_builtins\": true,\n  \"persist_job\": true\n}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Document\n\nAnalyze and transform an uploaded PDF without persisting the raw document.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/documents/transform",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "documents",
+                "transform"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "manifest_json",
+                  "type": "text",
+                  "value": "{\n  \"title\": \"Customer contract export\",\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"EMAIL_ADDRESS\",\n      \"PERSON\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"contract\",\n      \"contact\"\n    ]\n  },\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"apply_builtins\": true,\n  \"persist_job\": true\n}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
+                  "for (const extractor of extractors) {",
+                  "  let assigned = false;",
+                  "  for (const path of extractor.paths) {",
+                  "    const value = path.includes('__collect__') ? collectPath(body, path) : readPath(body, path);",
+                  "    if (value === undefined || value === null || value === '') {",
+                  "      continue;",
+                  "    }",
+                  "    const serialized = Array.isArray(value) ? JSON.stringify(value) : String(value);",
+                  "    pm.collectionVariables.set(extractor.variable, serialized);",
+                  "    assigned = true;",
+                  "    break;",
+                  "  }",
+                  "  if (assigned) {",
+                  "    console.log(`Set collection variable ${extractor.variable}`);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transform Document Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "description": "Transform Document Job\n\nTransform a reviewed PDF job using a resubmitted source file.\n\nCollection helpers:\n- Automatically updates collection variables: jobId, findingId, findingIdsJson.",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workflows/documents/transform-job",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflows",
+                "documents",
+                "transform-job"
+              ],
+              "query": []
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "manifest_json",
+                  "type": "text",
+                  "value": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Response status is successful\", function () {",
+                  "  pm.expect(pm.response.code).to.be.below(400);",
+                  "});",
+                  "",
+                  "const contentType = pm.response.headers.get(\"Content-Type\") || \"\";",
+                  "if (!contentType.includes(\"application/json\")) {",
+                  "  return;",
+                  "}",
+                  "",
+                  "const body = pm.response.json();",
+                  "const readPath = (value, path) => {",
+                  "  let current = value;",
+                  "  for (const segment of path) {",
+                  "    if (segment === '__collect__') {",
+                  "      if (!Array.isArray(current)) {",
+                  "        return undefined;",
+                  "      }",
+                  "      return current;",
+                  "    }",
+                  "    if (current === undefined || current === null) {",
+                  "      return undefined;",
+                  "    }",
+                  "    current = current[segment];",
+                  "  }",
+                  "  return current;",
+                  "};",
+                  "const collectPath = (value, path) => {",
+                  "  const markerIndex = path.indexOf('__collect__');",
+                  "  if (markerIndex === -1) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const collectionTarget = readPath(value, path.slice(0, markerIndex));",
+                  "  if (!Array.isArray(collectionTarget)) {",
+                  "    return undefined;",
+                  "  }",
+                  "  const tail = path.slice(markerIndex + 1);",
+                  "  return collectionTarget",
+                  "    .map((entry) => readPath(entry, tail))",
+                  "    .filter((entry) => entry !== undefined && entry !== null && entry !== '');",
+                  "};",
+                  "const extractors = [\n  {\n    \"variable\": \"jobId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"job_id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingId\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        0,\n        \"id\"\n      ]\n    ]\n  },\n  {\n    \"variable\": \"findingIdsJson\",\n    \"paths\": [\n      [\n        \"data\",\n        \"findings\",\n        \"__collect__\",\n        \"id\"\n      ]\n    ]\n  }\n];",
                   "for (const extractor of extractors) {",
                   "  let assigned = false;",
                   "  for (const path of extractor.paths) {",

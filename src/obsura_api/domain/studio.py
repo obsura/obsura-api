@@ -22,7 +22,11 @@ class PatternMatcherDefinition(BaseModel):
     values: list[str] = Field(default_factory=list)
     case_sensitive: bool = False
     applies_to: list[ContentType] = Field(
-        default_factory=lambda: [ContentType.TEXT, ContentType.STRUCTURED_TEXT],
+        default_factory=lambda: [
+            ContentType.TEXT,
+            ContentType.STRUCTURED_TEXT,
+            ContentType.DOCUMENT,
+        ],
     )
 
     @model_validator(mode="after")
@@ -174,5 +178,9 @@ class PatternFromSelectionRequest(BaseModel):
     tags: list[str] = Field(default_factory=list)
     transformation: TransformationRule | None = None
     applies_to: list[ContentType] = Field(
-        default_factory=lambda: [ContentType.TEXT, ContentType.STRUCTURED_TEXT],
+        default_factory=lambda: [
+            ContentType.TEXT,
+            ContentType.STRUCTURED_TEXT,
+            ContentType.DOCUMENT,
+        ],
     )

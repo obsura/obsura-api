@@ -15,6 +15,7 @@ def client(tmp_path: Path) -> TestClient:
         database_url=f"sqlite:///{tmp_path / 'obsura.db'}",
         storage_root=tmp_path / "storage",
         auto_create_schema=True,
+        document_extractor_backend="noop",
         ocr_backend="noop",
         face_detector_backend="noop",
         pii_backend="noop",

@@ -8,6 +8,7 @@ from enum import Enum
 class ContentType(str, Enum):
     TEXT = "text"
     STRUCTURED_TEXT = "structured_text"
+    DOCUMENT = "document"
     SCREENSHOT = "screenshot"
     IMAGE = "image"
 

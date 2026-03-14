@@ -32,6 +32,8 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_OCR_PROVIDER",
         "OBSURA_OCR_LANGUAGE",
         "OBSURA_TESSERACT_LANG",
+        "OBSURA_DOCUMENT_EXTRACTOR_BACKEND",
+        "OBSURA_PDF_EXTRACTOR_BACKEND",
         "OBSURA_PII_BACKEND",
         "OBSURA_PII_PROVIDER",
         "OBSURA_NLP_BACKEND",
@@ -185,6 +187,14 @@ def test_reads_text_anonymizer_settings(monkeypatch) -> None:
 
     assert settings.text_anonymizer_backend == "native"
     assert settings.text_hash_salt == "0123456789abcdef"
+
+
+def test_reads_document_extractor_settings(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_PDF_EXTRACTOR_BACKEND", "pypdf")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.document_extractor_backend == "pypdf"
 
 
 def test_presidio_requires_model_for_each_configured_language(monkeypatch) -> None:

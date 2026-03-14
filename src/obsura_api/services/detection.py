@@ -261,7 +261,7 @@ class TextDetectionService:
 
         for pattern in patterns:
             matcher = PatternMatcherDefinition.model_validate(pattern.matcher)
-            if content_type not in matcher.applies_to:
+            if not self._matcher_supports_content_type(matcher.applies_to, content_type):
                 continue
             transformation = self._coalesce_transformation(
                 pattern.transformation,
@@ -285,7 +285,7 @@ class TextDetectionService:
             )
             for definition in entity.detection_definitions:
                 matcher = PatternMatcherDefinition.model_validate(definition)
-                if content_type not in matcher.applies_to:
+                if not self._matcher_supports_content_type(matcher.applies_to, content_type):
                     continue
                 findings.extend(
                     self._detect_matcher(
@@ -412,6 +412,15 @@ class TextDetectionService:
         if raw_transformation:
             return TransformationRule.model_validate(raw_transformation)
         return default_transformation
+
+    def _matcher_supports_content_type(
+        self,
+        applies_to: list[ContentType],
+        content_type: ContentType,
+    ) -> bool:
+        if content_type in applies_to:
+            return True
+        return content_type is ContentType.DOCUMENT and ContentType.TEXT in applies_to
 
     def _detect_built_ins(
         self,
