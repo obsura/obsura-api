@@ -23,6 +23,8 @@ Frontend expectation:
 
 - use `/api/v1/ready` before treating the backend as fully available
 - use `/api/v1/version` for diagnostics, environment display, and operator UI
+- use `/api/v1/version` to discover `document_extractor_backend` and whether
+  `document_pdf_available` is enabled on the deployment
 - use `/api/v1/version` to discover active `pii_languages` and whether
   `pii_custom_recognizers` are configured
 - use `/api/v1/version` to discover `text_anonymizer_backend` and whether
@@ -161,6 +163,26 @@ Frontend guidance:
 - use `pii_detection` when the operator needs language, entity scope, or context
   tuning for Presidio-backed detection
 
+### Document Workflows
+
+Main endpoints:
+
+- `POST /api/v1/workflows/documents/analyze`
+- `POST /api/v1/workflows/documents/transform`
+- `POST /api/v1/workflows/documents/transform-job`
+
+Frontend guidance:
+
+- these endpoints currently support text-based PDF uploads only
+- they use `multipart/form-data`
+- `manifest_json` is a JSON string field, not a nested JSON body
+- findings use page-local text spans and include safe metadata such as
+  `document_page_number` and `document_page_label`
+- for reviewed document jobs, resend the original PDF file to `transform-job`;
+  raw PDF source files are not retained by the backend
+- scanned or image-only PDFs are intentionally rejected for now; OCR-backed PDF
+  support is deferred
+
 ### Structured Workflows
 
 Main endpoints:
@@ -230,6 +252,7 @@ Frontend should model the main workflows like this:
 This applies to:
 
 - single text flows
+- PDF document flows
 - structured JSON flows
 - image/screenshot flows
 - bulk text flows
@@ -299,6 +322,8 @@ Where it can be used:
 
 - `POST /api/v1/workflows/text/analyze`
 - `POST /api/v1/workflows/text/analyze-transform`
+- `POST /api/v1/workflows/documents/analyze` inside `manifest_json`
+- `POST /api/v1/workflows/documents/transform` inside `manifest_json`
 - `POST /api/v1/workflows/structured/analyze`
 - `POST /api/v1/workflows/structured/transform`
 - `POST /api/v1/workflows/images/analyze` inside `manifest_json`
@@ -391,6 +416,7 @@ Use one typed API client layer with resource grouping similar to the backend:
 - `studioApi`
 - `jobsApi`
 - `textWorkflowsApi`
+- `documentWorkflowsApi`
 - `structuredWorkflowsApi`
 - `imageWorkflowsApi`
 - `bulkJobsApi`
@@ -410,6 +436,7 @@ Recommended type groups:
 - finding/review types
 - job/output types
 - text workflow request/response types
+- document workflow request/response types
 - structured workflow request/response types
 - image workflow request/response types
 - bulk request/response types
@@ -423,6 +450,14 @@ Recommended type groups:
 3. submit `POST /api/v1/jobs/{job_id}/review`
 4. submit `POST /api/v1/workflows/text/transform`
 5. render `output_text` and replacement summary
+
+### PDF Document Flow
+
+1. upload file to `POST /api/v1/workflows/documents/analyze`
+2. render findings grouped by `metadata.document_page_number`
+3. submit `POST /api/v1/jobs/{job_id}/review`
+4. upload the same file to `POST /api/v1/workflows/documents/transform-job`
+5. render `pages[].output_text` or the combined `output_text`
 
 ### Screenshot/Image Flow
 
@@ -458,6 +493,8 @@ Current runtime limits can be configured, but frontend should assume these exist
 - bulk text item count limit
 - bulk text per-item character limit
 - bulk text total character limit
+- document page count limit
+- document extracted character limit
 - structured payload node limit
 - structured payload depth limit
 - structured payload total character limit
@@ -496,6 +533,7 @@ Frontend can confidently build against:
 - studio asset CRUD/search
 - persisted jobs and review
 - text analyze/review/transform
+- document analyze/review/transform-job
 - structured analyze/review/transform-job
 - image analyze/review/transform-job
 - bulk text analyze/review/transform
@@ -508,7 +546,8 @@ Do not design frontend dependencies on these yet:
 
 - bulk images
 - bulk analyze-transform
-- PDF/document workflows
+- scanned PDF OCR workflows
+- native sanitized PDF rewrite output
 - CSV/DataFrame structured workflows
 - auth and workspace isolation
 - background job orchestration

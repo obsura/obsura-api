@@ -27,6 +27,10 @@ class ServiceVersionInfo(BaseModel):
     database_backend: str
     schema_revision: str
     schema_head: str
+    document_extractor_backend: str
+    document_pdf_available: bool
+    document_max_pages: int
+    document_max_extracted_characters: int
     ocr_backend: str
     face_detector_backend: str
     pii_backend: str

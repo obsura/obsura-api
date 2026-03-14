@@ -3,7 +3,7 @@
   "info": {
     "title": "Obsura API",
     "summary": "Review-first sanitization workflows, studio assets, and job orchestration for Obsura.",
-    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- persisted bulk text submissions that group many reviewable child jobs\n- reviewable jobs and run history\n- text-first and screenshot-first sanitization workflows\n- structured JSON analyze/review/transform workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
+    "description": "Obsura API is the review-first workflow and orchestration layer for Obsura.\n\nThe API supports:\n- persistent studio assets for custom detection and reusable configurations\n- persisted bulk text submissions that group many reviewable child jobs\n- reviewable jobs and run history\n- PDF text extraction workflows for review-first document sanitization\n- text-first and screenshot-first sanitization workflows\n- structured JSON analyze/review/transform workflows\n- transformation behavior beyond plain placeholder replacement\n- image-region protection flows for blur, pixelation, masks, and overlays\n\nThis OpenAPI document is intended for direct import into API clients such as Postman.",
     "contact": {
       "name": "Obsura",
       "url": "https://github.com/obsura"
@@ -1168,6 +1168,132 @@
         }
       }
     },
+    "/api/v1/workflows/documents/analyze": {
+      "post": {
+        "tags": [
+          "document-workflows"
+        ],
+        "summary": "Analyze Document",
+        "description": "Analyze an uploaded PDF into page-aware review findings.",
+        "operationId": "analyze_document_api_v1_workflows_documents_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_document_api_v1_workflows_documents_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DocumentWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/documents/transform": {
+      "post": {
+        "tags": [
+          "document-workflows"
+        ],
+        "summary": "Transform Document",
+        "description": "Analyze and transform an uploaded PDF without persisting the raw document.",
+        "operationId": "transform_document_api_v1_workflows_documents_transform_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transform_document_api_v1_workflows_documents_transform_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DocumentWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/documents/transform-job": {
+      "post": {
+        "tags": [
+          "document-workflows"
+        ],
+        "summary": "Transform Document Job",
+        "description": "Transform a reviewed PDF job using a resubmitted source file.",
+        "operationId": "transform_document_job_api_v1_workflows_documents_transform_job_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_transform_document_job_api_v1_workflows_documents_transform_job_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse_DocumentWorkflowResponse_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/workflows/text/analyze": {
       "post": {
         "tags": [
@@ -1846,6 +1972,60 @@
           "success"
         ],
         "title": "ApiResponse[CustomEntityRead]"
+      },
+      "ApiResponse_DocumentWorkflowResponse_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentWorkflowResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[DocumentWorkflowResponse]"
       },
       "ApiResponse_ImageWorkflowResponse_": {
         "properties": {
@@ -2631,6 +2811,25 @@
         ],
         "title": "ApiResponse[list[SearchResultItem]]"
       },
+      "Body_analyze_document_api_v1_workflows_documents_analyze_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_analyze_document_api_v1_workflows_documents_analyze_post"
+      },
       "Body_analyze_image_api_v1_workflows_images_analyze_post": {
         "properties": {
           "file": {
@@ -2649,6 +2848,44 @@
           "file"
         ],
         "title": "Body_analyze_image_api_v1_workflows_images_analyze_post"
+      },
+      "Body_transform_document_api_v1_workflows_documents_transform_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_transform_document_api_v1_workflows_documents_transform_post"
+      },
+      "Body_transform_document_job_api_v1_workflows_documents_transform_job_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "manifest_json": {
+            "type": "string",
+            "title": "Manifest Json",
+            "default": "{}"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_transform_document_job_api_v1_workflows_documents_transform_job_post"
       },
       "Body_transform_image_api_v1_workflows_images_transform_post": {
         "properties": {
@@ -4115,6 +4352,7 @@
         "enum": [
           "text",
           "structured_text",
+          "document",
           "screenshot",
           "image"
         ],
@@ -4390,6 +4628,175 @@
         "type": "object",
         "title": "CustomEntityUpdate",
         "description": "Partial update for a custom entity."
+      },
+      "DocumentPageResult": {
+        "properties": {
+          "page_number": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Number"
+          },
+          "character_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Character Count"
+          },
+          "output_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Text"
+          },
+          "replacement_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Replacement Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "page_number",
+          "character_count"
+        ],
+        "title": "DocumentPageResult",
+        "description": "One page in an extracted or transformed PDF response."
+      },
+      "DocumentReplacementRecord": {
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "title": "Entity Type"
+          },
+          "page_number": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page Number"
+          },
+          "start_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Index"
+          },
+          "end_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Index"
+          },
+          "original_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Preview"
+          },
+          "output_value": {
+            "type": "string",
+            "title": "Output Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entity_type",
+          "page_number",
+          "output_value"
+        ],
+        "title": "DocumentReplacementRecord",
+        "description": "One replacement applied to extracted PDF text."
+      },
+      "DocumentWorkflowResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingRecord"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "page_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Page Count"
+          },
+          "extracted_character_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Extracted Character Count"
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentPageResult"
+            },
+            "type": "array",
+            "title": "Pages"
+          },
+          "output_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Text"
+          },
+          "replacements": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentReplacementRecord"
+            },
+            "type": "array",
+            "title": "Replacements"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings",
+          "page_count",
+          "extracted_character_count",
+          "summary"
+        ],
+        "title": "DocumentWorkflowResponse",
+        "description": "Review-first PDF workflow response."
       },
       "FindingKind": {
         "type": "string",
@@ -5728,6 +6135,22 @@
             "type": "string",
             "title": "Schema Head"
           },
+          "document_extractor_backend": {
+            "type": "string",
+            "title": "Document Extractor Backend"
+          },
+          "document_pdf_available": {
+            "type": "boolean",
+            "title": "Document Pdf Available"
+          },
+          "document_max_pages": {
+            "type": "integer",
+            "title": "Document Max Pages"
+          },
+          "document_max_extracted_characters": {
+            "type": "integer",
+            "title": "Document Max Extracted Characters"
+          },
           "ocr_backend": {
             "type": "string",
             "title": "Ocr Backend"
@@ -5780,6 +6203,10 @@
           "database_backend",
           "schema_revision",
           "schema_head",
+          "document_extractor_backend",
+          "document_pdf_available",
+          "document_max_pages",
+          "document_max_extracted_characters",
           "ocr_backend",
           "face_detector_backend",
           "pii_backend",
@@ -6673,6 +7100,10 @@
     {
       "name": "jobs",
       "description": "Review history, job inspection, and review-decision updates."
+    },
+    {
+      "name": "document-workflows",
+      "description": "Review-first PDF text extraction workflows for safe document analysis and sanitized export."
     },
     {
       "name": "text-workflows",

@@ -41,12 +41,20 @@ def _content_type_enum() -> sa.Enum:
         return postgresql.ENUM(
             "TEXT",
             "STRUCTURED_TEXT",
+            "DOCUMENT",
             "SCREENSHOT",
             "IMAGE",
             name="contenttype",
             create_type=False,
         )
-    return sa.Enum("TEXT", "STRUCTURED_TEXT", "SCREENSHOT", "IMAGE", name="contenttype")
+    return sa.Enum(
+        "TEXT",
+        "STRUCTURED_TEXT",
+        "DOCUMENT",
+        "SCREENSHOT",
+        "IMAGE",
+        name="contenttype",
+    )
 
 
 def upgrade() -> None:

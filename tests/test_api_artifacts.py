@@ -8,6 +8,7 @@ from obsura_api.tools.api_artifacts import build_postman_collection
 def test_postman_collection_uses_chained_variables() -> None:
     app = create_app(
         Settings(
+            document_extractor_backend="noop",
             ocr_backend="noop",
             face_detector_backend="noop",
             auto_create_schema=True,
@@ -85,3 +86,28 @@ def test_postman_collection_uses_chained_variables() -> None:
     )
     assert "{{jobId}}" in structured_transform_job_request["request"]["body"]["raw"]
     assert "{{findingId}}" in structured_transform_job_request["request"]["body"]["raw"]
+
+    document_folder = next(
+        item for item in collection["item"] if item["name"] == "Document Workflows"
+    )
+    analyze_document_request = next(
+        item for item in document_folder["item"] if item["name"] == "Analyze Document"
+    )
+    document_manifest_field = next(
+        item
+        for item in analyze_document_request["request"]["body"]["formdata"]
+        if item["key"] == "manifest_json"
+    )
+    assert '"persist_job": true' in document_manifest_field["value"]
+    assert analyze_document_request["event"]
+
+    transform_document_job_request = next(
+        item for item in document_folder["item"] if item["name"] == "Transform Document Job"
+    )
+    document_transform_manifest_field = next(
+        item
+        for item in transform_document_job_request["request"]["body"]["formdata"]
+        if item["key"] == "manifest_json"
+    )
+    assert "{{jobId}}" in document_transform_manifest_field["value"]
+    assert "{{findingId}}" in document_transform_manifest_field["value"]

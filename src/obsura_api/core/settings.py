@@ -62,6 +62,13 @@ class Settings(BaseSettings):
             "OBSURA_TESSERACT_LANG",
         ),
     )
+    document_extractor_backend: str = Field(
+        default="auto",
+        validation_alias=AliasChoices(
+            "OBSURA_DOCUMENT_EXTRACTOR_BACKEND",
+            "OBSURA_PDF_EXTRACTOR_BACKEND",
+        ),
+    )
     pii_backend: str = Field(
         default="noop",
         validation_alias=AliasChoices(
@@ -156,6 +163,8 @@ class Settings(BaseSettings):
     max_bulk_text_items: int = Field(default=50, ge=1, le=500)
     max_bulk_text_item_characters: int = Field(default=100_000, ge=1)
     max_bulk_text_total_characters: int = Field(default=1_000_000, ge=1)
+    max_document_pages: int = Field(default=100, ge=1, le=2_000)
+    max_document_extracted_characters: int = Field(default=250_000, ge=1)
     max_structured_payload_nodes: int = Field(default=5_000, ge=1, le=100_000)
     max_structured_payload_depth: int = Field(default=16, ge=1, le=128)
     max_structured_payload_characters: int = Field(default=250_000, ge=1)
@@ -395,6 +404,7 @@ class Settings(BaseSettings):
                 )
 
         self.text_anonymizer_backend = self.text_anonymizer_backend.strip().lower()
+        self.document_extractor_backend = self.document_extractor_backend.strip().lower()
         if self.text_hash_salt is not None and len(self.text_hash_salt.encode("utf-8")) < 16:
             raise ValueError("OBSURA_TEXT_HASH_SALT must be at least 16 bytes long.")
 

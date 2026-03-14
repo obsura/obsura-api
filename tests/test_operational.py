@@ -57,6 +57,10 @@ def test_ready_and_version_endpoints(client) -> None:
     expected_head = get_head_revision("sqlite:///./example.db")
     assert version_body["data"]["schema_revision"] == expected_head
     assert version_body["data"]["schema_head"] == expected_head
+    assert version_body["data"]["document_extractor_backend"] == "noop-document-extractor"
+    assert version_body["data"]["document_pdf_available"] is False
+    assert version_body["data"]["document_max_pages"] == 100
+    assert version_body["data"]["document_max_extracted_characters"] == 250000
     assert version_body["data"]["pii_backend"] == "noop-pii-detector"
     assert version_body["data"]["text_anonymizer_backend"] == "native-text-anonymizer"
     assert version_body["data"]["pii_languages"] == []

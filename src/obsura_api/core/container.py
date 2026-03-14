@@ -8,6 +8,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from obsura_api.core.settings import Settings
+from obsura_api.services.providers.documents import DocumentExtractor
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.providers.ocr import OCRProvider
 from obsura_api.services.providers.pii import PIIDetector
@@ -23,6 +24,7 @@ class AppContainer:
     engine: Engine
     session_factory: sessionmaker[Session]
     storage: StorageService
+    document_extractor: DocumentExtractor
     ocr_provider: OCRProvider
     face_detector: FaceDetector
     pii_detector: PIIDetector
