@@ -5559,6 +5559,10 @@
             "type": "string",
             "title": "Pii Backend"
           },
+          "text_anonymizer_backend": {
+            "type": "string",
+            "title": "Text Anonymizer Backend"
+          },
           "pii_languages": {
             "items": {
               "type": "string"
@@ -5569,6 +5573,10 @@
           "pii_custom_recognizers": {
             "type": "boolean",
             "title": "Pii Custom Recognizers"
+          },
+          "text_hash_supported": {
+            "type": "boolean",
+            "title": "Text Hash Supported"
           },
           "ocr_available": {
             "type": "boolean",
@@ -5594,8 +5602,10 @@
           "ocr_backend",
           "face_detector_backend",
           "pii_backend",
+          "text_anonymizer_backend",
           "pii_languages",
           "pii_custom_recognizers",
+          "text_hash_supported",
           "ocr_available",
           "face_detection_available",
           "pii_available"
@@ -5857,6 +5867,8 @@
           "partial_mask",
           "stable_alias",
           "mask",
+          "redact",
+          "hash",
           "blur",
           "pixelate",
           "overlay",

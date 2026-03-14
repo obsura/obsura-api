@@ -114,6 +114,20 @@ class Settings(BaseSettings):
             "OBSURA_PII_RECOGNIZERS_PATH",
         ),
     )
+    text_anonymizer_backend: str = Field(
+        default="auto",
+        validation_alias=AliasChoices(
+            "OBSURA_TEXT_ANONYMIZER_BACKEND",
+            "OBSURA_PRESIDIO_ANONYMIZER_BACKEND",
+        ),
+    )
+    text_hash_salt: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "OBSURA_TEXT_HASH_SALT",
+            "OBSURA_PRESIDIO_HASH_SALT",
+        ),
+    )
     storage_root: Path = Field(default=Path("storage"))
     media_mount_path: str = "/media"
     auto_create_schema: bool = False
@@ -305,6 +319,16 @@ class Settings(BaseSettings):
             return Path(normalized)
         return value
 
+    @field_validator("text_hash_salt", mode="before")
+    @classmethod
+    def parse_text_hash_salt(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+        return value
+
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
         raw_database_url = self.database_url.strip()
@@ -366,6 +390,10 @@ class Settings(BaseSettings):
                     "Presidio requires a spaCy model for each configured language. "
                     f"Missing model mapping for: {missing}",
                 )
+
+        self.text_anonymizer_backend = self.text_anonymizer_backend.strip().lower()
+        if self.text_hash_salt is not None and len(self.text_hash_salt.encode("utf-8")) < 16:
+            raise ValueError("OBSURA_TEXT_HASH_SALT must be at least 16 bytes long.")
 
         self.database_url = parsed_url.render_as_string(hide_password=False)
         return self

@@ -47,6 +47,10 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_PII_MODEL_MAP",
         "OBSURA_PRESIDIO_RECOGNIZERS_PATH",
         "OBSURA_PII_RECOGNIZERS_PATH",
+        "OBSURA_TEXT_ANONYMIZER_BACKEND",
+        "OBSURA_PRESIDIO_ANONYMIZER_BACKEND",
+        "OBSURA_TEXT_HASH_SALT",
+        "OBSURA_PRESIDIO_HASH_SALT",
     ):
         monkeypatch.delenv(key, raising=False)
     get_settings.cache_clear()
@@ -173,12 +177,29 @@ def test_reads_extended_presidio_settings(monkeypatch, tmp_path: Path) -> None:
     assert settings.presidio_recognizers_path == recognizers_path
 
 
+def test_reads_text_anonymizer_settings(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_TEXT_ANONYMIZER_BACKEND", "native")
+    monkeypatch.setenv("OBSURA_TEXT_HASH_SALT", "0123456789abcdef")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.text_anonymizer_backend == "native"
+    assert settings.text_hash_salt == "0123456789abcdef"
+
+
 def test_presidio_requires_model_for_each_configured_language(monkeypatch) -> None:
     monkeypatch.setenv("OBSURA_PII_BACKEND", "presidio")
     monkeypatch.setenv("OBSURA_PRESIDIO_SUPPORTED_LANGUAGES", "en,es")
     monkeypatch.setenv("OBSURA_PRESIDIO_MODEL_MAP", '{"en":"en_core_web_sm"}')
 
     with pytest.raises(ValidationError, match="Missing model mapping for: es"):
+        Settings(_env_file=None)
+
+
+def test_rejects_short_text_hash_salt(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_TEXT_HASH_SALT", "short")
+
+    with pytest.raises(ValidationError, match="OBSURA_TEXT_HASH_SALT must be at least 16 bytes long"):
         Settings(_env_file=None)
 
 

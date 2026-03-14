@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from obsura_api.app import create_app
+from obsura_api.core.settings import Settings
+
 
 def test_text_review_and_transform_flow(client) -> None:
     pattern_response = client.post(
@@ -158,3 +166,65 @@ def test_text_transform_supports_partial_mask_for_frontend_customization(client)
     assert response.status_code == 200
     body = response.json()["data"]
     assert body["output_text"] == "Contact me at jo******@example.com"
+
+
+def test_text_transform_supports_redact_mode(client) -> None:
+    response = client.post(
+        "/api/v1/workflows/text/analyze-transform",
+        json={
+            "content": "token=supersecret",
+            "exact_values": ["supersecret"],
+            "default_transformation": {"mode": "redact"},
+            "persist_job": False,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["output_text"] == "token="
+
+
+def test_text_transform_supports_hash_mode_with_configured_salt(tmp_path: Path) -> None:
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path / 'obsura.db'}",
+        storage_root=tmp_path / "storage",
+        auto_create_schema=True,
+        ocr_backend="noop",
+        face_detector_backend="noop",
+        pii_backend="noop",
+        text_hash_salt="0123456789abcdef",
+        _env_file=None,
+    )
+    app = create_app(settings)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/workflows/text/analyze-transform",
+            json={
+                "content": "token=alpha token=alpha",
+                "exact_values": ["alpha"],
+                "default_transformation": {"mode": "hash"},
+                "persist_job": False,
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    expected_hash = hashlib.sha256(b"0123456789abcdef:alpha").hexdigest()
+    assert body["output_text"] == f"token={expected_hash} token={expected_hash}"
+
+
+def test_text_transform_rejects_hash_mode_without_configured_salt(client) -> None:
+    response = client.post(
+        "/api/v1/workflows/text/analyze-transform",
+        json={
+            "content": "token=alpha",
+            "exact_values": ["alpha"],
+            "default_transformation": {"mode": "hash"},
+            "persist_job": False,
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert "OBSURA_TEXT_HASH_SALT" in body["error"]["message"]

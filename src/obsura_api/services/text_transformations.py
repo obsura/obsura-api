@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 
+from obsura_api.core.settings import Settings
 from obsura_api.db.models import Job, JobOutput
 from obsura_api.domain.enums import ContentType, FindingSource, JobStatus, ReviewDecision, TransformationMode
 from obsura_api.domain.transforms import TransformationRule
@@ -21,6 +22,7 @@ from obsura_api.domain.workflows import (
 )
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.utils import hash_value, normalize_token, summarize_findings
+from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
 
 
 SOURCE_PRIORITY = {
@@ -35,8 +37,18 @@ SOURCE_PRIORITY = {
 class TextTransformationService:
     """Apply approved or pending findings to text content."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(
+        self,
+        session: Session,
+        settings: Settings | None = None,
+        *,
+        text_anonymizer: TextAnonymizer | None = None,
+    ) -> None:
         self.session = session
+        self.settings = settings
+        self.text_anonymizer = text_anonymizer or NativeTextAnonymizer(
+            hash_salt=getattr(settings, "text_hash_salt", None),
+        )
 
     def transform_job(self, request: TextTransformRequest) -> TextTransformResponse:
         if not request.job_id:
@@ -237,13 +249,31 @@ class TextTransformationService:
         alias_counts: dict[str, int],
     ) -> str:
         if rule.mode is TransformationMode.SEMANTIC:
-            return f"[{normalize_token(rule.semantic_label or finding.entity_type)}]"
+            return self._replace_with_operator(
+                original_value,
+                f"[{normalize_token(rule.semantic_label or finding.entity_type)}]",
+            )
 
         if rule.mode in {TransformationMode.GENERIC, TransformationMode.CUSTOM}:
-            return rule.placeholder or "[REDACTED]"
+            return self._replace_with_operator(
+                original_value,
+                rule.placeholder or "[REDACTED]",
+            )
 
         if rule.mode is TransformationMode.MASK:
-            return rule.mask_character * max(len(original_value), 1)
+            return self.text_anonymizer.mask(
+                original_value,
+                mask_character=rule.mask_character,
+            )
+
+        if rule.mode is TransformationMode.REDACT:
+            return self.text_anonymizer.redact(original_value)
+
+        if rule.mode is TransformationMode.HASH:
+            return self.text_anonymizer.hash(
+                original_value,
+                salt=self._require_hash_salt(),
+            )
 
         if rule.mode is TransformationMode.PARTIAL_MASK:
             visible_prefix = rule.prefix_visible
@@ -270,6 +300,20 @@ class TextTransformationService:
             return alias_map[key]
 
         return rule.placeholder or f"[{normalize_token(finding.entity_type)}]"
+
+    def _replace_with_operator(self, original_value: str, replacement: str) -> str:
+        return self.text_anonymizer.replace(original_value, replacement)
+
+    def _require_hash_salt(self) -> str:
+        if self.settings is None or not self.settings.text_hash_salt:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=(
+                    "Hash transformations require OBSURA_TEXT_HASH_SALT to be configured "
+                    "on this deployment"
+                ),
+            )
+        return self.settings.text_hash_salt
 
     def _load_text_job(self, job_id: str) -> Job:
         job = self.session.scalar(

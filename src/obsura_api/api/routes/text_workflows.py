@@ -49,10 +49,18 @@ def analyze_text(
 def transform_text(
     payload: TextTransformRequest,
     session: SessionDep,
+    settings: SettingsDep,
+    container: ContainerDep,
 ) -> ApiResponse[TextTransformResponse]:
     """Transform a persisted text job after review decisions and overrides are applied."""
 
-    return success_response(TextTransformationService(session).transform_job(payload))
+    return success_response(
+        TextTransformationService(
+            session,
+            settings,
+            text_anonymizer=container.text_anonymizer,
+        ).transform_job(payload),
+    )
 
 
 @router.post("/analyze-transform", response_model=ApiResponse[TextTransformResponse])
@@ -70,7 +78,11 @@ def analyze_and_transform_text(
         pii_detector=container.pii_detector,
     )
     analysis = detector.analyze(payload)
-    transformer = TextTransformationService(session)
+    transformer = TextTransformationService(
+        session,
+        settings,
+        text_anonymizer=container.text_anonymizer,
+    )
     output_text, replacements = transformer.apply_findings(
         content=payload.content,
         findings=analysis.findings,

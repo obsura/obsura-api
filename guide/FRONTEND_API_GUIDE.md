@@ -25,6 +25,8 @@ Frontend expectation:
 - use `/api/v1/version` for diagnostics, environment display, and operator UI
 - use `/api/v1/version` to discover active `pii_languages` and whether
   `pii_custom_recognizers` are configured
+- use `/api/v1/version` to discover `text_anonymizer_backend` and whether
+  `text_hash_supported` is enabled on the deployment
 - do not use `/api/v1/health` as a full readiness signal
 - local development CORS allows `http://127.0.0.1:3000` and
   `http://localhost:3000` by default
@@ -320,6 +322,17 @@ Text-focused fields:
 - `semantic_label`
 - `alias_prefix`
 
+Text mode notes:
+
+- `generic` and `custom` replace the finding with explicit text
+- `semantic` replaces the finding with a label such as `[EMAIL]`
+- `mask` keeps the span length and masks every character
+- `partial_mask` keeps configured prefix/suffix visibility
+- `stable_alias` keeps repeated values internally consistent within one output
+- `redact` removes the matched text entirely
+- `hash` replaces the value with a salted hash and should only be surfaced when
+  `text_hash_supported` is true
+
 Image-focused fields:
 
 - `mode`
@@ -346,6 +359,8 @@ Stable defaults:
 - image default is now `blur`
 - image overlays do not render label text unless the frontend explicitly sends
   `overlay_label` or a placeholder-based mode
+- `hash` is deployment-gated and requires backend configuration; do not assume it
+  is always available
 
 ## 10. Recommended Frontend Client Structure
 
