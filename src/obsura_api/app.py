@@ -30,6 +30,7 @@ from obsura_api.domain.operational import ServiceRootInfo
 from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import build_ocr_provider
 from obsura_api.services.providers.pii import build_pii_detector
+from obsura_api.services.providers.text_anonymizer import build_text_anonymizer
 from obsura_api.services.privacy import scrub_persisted_sensitive_data
 from obsura_api.services.storage import StorageService
 
@@ -141,10 +142,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ocr_provider = build_ocr_provider(settings)
     face_detector = build_face_detector(settings)
     pii_detector = build_pii_detector(settings)
+    text_anonymizer = build_text_anonymizer(settings)
     PILImage.MAX_IMAGE_PIXELS = settings.max_image_pixels
     logger.info("Using `%s` OCR backend", ocr_provider.name)
     logger.info("Using `%s` face detector backend", face_detector.name)
     logger.info("Using `%s` PII detector backend", pii_detector.name)
+    logger.info(
+        "Using `%s` text anonymizer backend (hash supported: %s)",
+        text_anonymizer.name,
+        bool(getattr(text_anonymizer, "hash_supported", False)),
+    )
     if getattr(pii_detector, "supported_languages", ()):
         logger.info(
             "PII detector languages: %s (custom recognizers: %s)",
@@ -221,6 +228,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ocr_provider=ocr_provider,
         face_detector=face_detector,
         pii_detector=pii_detector,
+        text_anonymizer=text_anonymizer,
     )
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)

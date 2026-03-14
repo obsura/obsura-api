@@ -36,6 +36,7 @@ from obsura_api.domain.workflows import TextTransformRequest
 from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import JobService
 from obsura_api.services.providers.pii import PIIDetector, NoOpPIIDetector
+from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
 from obsura_api.services.text_transformations import TextTransformationService
 from obsura_api.services.utils import summarize_findings
 
@@ -191,6 +192,8 @@ class BulkJobService:
         session: Session,
         settings: Settings,
         pii_detector: PIIDetector | None = None,
+        *,
+        text_anonymizer: TextAnonymizer | None = None,
     ) -> None:
         self.session = session
         self.settings = settings
@@ -200,7 +203,12 @@ class BulkJobService:
             pii_detector=pii_detector or NoOpPIIDetector(),
         )
         self.job_service = JobService(session)
-        self.text_transformations = TextTransformationService(session)
+        self.text_transformations = TextTransformationService(
+            session,
+            settings,
+            text_anonymizer=text_anonymizer
+            or NativeTextAnonymizer(hash_salt=settings.text_hash_salt),
+        )
 
     def analyze_text(self, payload: BulkTextAnalyzeRequest) -> BulkJobRead:
         self._validate_bulk_request(payload)

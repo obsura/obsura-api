@@ -2606,7 +2606,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"One-shot alias workflow\",\n  \"content\": \"customer=acme customer=acme customer=globex\",\n  \"content_type\": \"text\",\n  \"apply_builtins\": false,\n  \"exact_values\": [\n    \"acme\",\n    \"globex\"\n  ],\n  \"default_transformation\": {\n    \"mode\": \"stable_alias\",\n    \"alias_prefix\": \"CUSTOMER\"\n  },\n  \"persist_job\": false\n}",
+              "raw": "{\n  \"title\": \"One-shot hashed secret workflow\",\n  \"content\": \"token=alpha token=alpha\",\n  \"content_type\": \"text\",\n  \"apply_builtins\": false,\n  \"exact_values\": [\n    \"alpha\"\n  ],\n  \"default_transformation\": {\n    \"mode\": \"hash\"\n  },\n  \"persist_job\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"

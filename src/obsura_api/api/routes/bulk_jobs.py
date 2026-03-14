@@ -49,6 +49,7 @@ def analyze_bulk_text(
             session,
             settings,
             pii_detector=container.pii_detector,
+            text_anonymizer=container.text_anonymizer,
         ).analyze_text(payload),
     )
 
@@ -66,6 +67,7 @@ def list_bulk_jobs(
         session,
         settings,
         pii_detector=container.pii_detector,
+        text_anonymizer=container.text_anonymizer,
     ).list_bulk_jobs(pagination)
     return success_response(items, pagination=pagination_meta)
 
@@ -84,6 +86,7 @@ def get_bulk_job(
             session,
             settings,
             pii_detector=container.pii_detector,
+            text_anonymizer=container.text_anonymizer,
         ).get_bulk_job(str(bulk_id)),
     )
 
@@ -103,6 +106,7 @@ def review_bulk_job(
             session,
             settings,
             pii_detector=container.pii_detector,
+            text_anonymizer=container.text_anonymizer,
         ).review_bulk_job(str(bulk_id), payload),
     )
 
@@ -121,5 +125,6 @@ def transform_bulk_text(
             session,
             settings,
             pii_detector=container.pii_detector,
+            text_anonymizer=container.text_anonymizer,
         ).transform_text(payload),
     )

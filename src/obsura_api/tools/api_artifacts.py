@@ -250,14 +250,13 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
         "persist_output": True,
     },
     ("POST", "/api/v1/workflows/text/analyze-transform"): {
-        "title": "One-shot alias workflow",
-        "content": "customer=acme customer=acme customer=globex",
+        "title": "One-shot hashed secret workflow",
+        "content": "token=alpha token=alpha",
         "content_type": "text",
         "apply_builtins": False,
-        "exact_values": ["acme", "globex"],
+        "exact_values": ["alpha"],
         "default_transformation": {
-            "mode": "stable_alias",
-            "alias_prefix": "CUSTOMER",
+            "mode": "hash",
         },
         "persist_job": False,
     },

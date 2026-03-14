@@ -31,6 +31,8 @@ class TransformationMode(str, Enum):
     PARTIAL_MASK = "partial_mask"
     STABLE_ALIAS = "stable_alias"
     MASK = "mask"
+    REDACT = "redact"
+    HASH = "hash"
     BLUR = "blur"
     PIXELATE = "pixelate"
     OVERLAY = "overlay"
