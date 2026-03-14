@@ -152,6 +152,8 @@ Frontend guidance:
 
 - treat `analyze` -> `review` -> `transform` as the primary UX flow
 - treat `analyze-transform` as a convenience path, not the main review-first UI
+- when transforming a persisted text job, resend `content`; raw source text is not
+  retained by the backend
 
 ### Image Workflows
 
@@ -166,6 +168,8 @@ Frontend guidance:
 - these endpoints use `multipart/form-data`
 - `manifest_json` is a JSON string field, not a nested JSON body
 - for review-first UI, prefer `analyze` -> job review -> `transform-job`
+- default image anonymization is `blur` when no explicit image transformation is
+  provided
 
 ### Bulk Text Workflows
 
@@ -248,8 +252,51 @@ Frontend rules:
 - do not assume they are directly fetchable URLs
 - when `media_url` is present, use `media_url` for browser display
 - treat storage-relative references as backend-managed identifiers
+- source image references are intentionally not exposed back to the frontend
+- generated image outputs are short-lived backend-managed artifacts, not durable
+  files
 
-## 8. Recommended Frontend Client Structure
+## 8. Transformation Customization
+
+The frontend can control anonymization style per finding or as a workflow default.
+
+Text-focused fields:
+
+- `mode`
+- `placeholder`
+- `mask_character`
+- `prefix_visible`
+- `suffix_visible`
+- `semantic_label`
+- `alias_prefix`
+
+Image-focused fields:
+
+- `mode`
+- `blur_radius`
+- `pixelation_scale`
+- `region_padding`
+- `overlay_shape`
+- `overlay_corner_radius`
+- `overlay_color`
+- `outline_color`
+- `outline_width`
+- `overlay_label`
+- `label_position`
+- `label_font_family`
+- `label_font_size`
+- `label_color`
+- `label_background_color`
+- `label_padding`
+- `label_margin`
+
+Stable defaults:
+
+- text default remains generic redaction, returning `[REDACTED]`
+- image default is now `blur`
+- image overlays do not render label text unless the frontend explicitly sends
+  `overlay_label` or a placeholder-based mode
+## 9. Recommended Frontend Client Structure
 
 Use one typed API client layer with resource grouping similar to the backend:
 
@@ -278,7 +325,7 @@ Recommended type groups:
 - image workflow request/response types
 - bulk request/response types
 
-## 9. Recommended UI Flows
+## 10. Recommended UI Flows
 
 ### Single Text Flow
 
@@ -305,7 +352,7 @@ Recommended type groups:
 5. submit `POST /api/v1/bulk/text/transform`
 6. render per-item transform outcomes explicitly
 
-## 10. Known Limits the Frontend Must Respect
+## 11. Known Limits the Frontend Must Respect
 
 Current runtime limits can be configured, but frontend should assume these exist:
 
@@ -321,7 +368,7 @@ Frontend guidance:
 - still rely on server validation as the source of truth
 - surface server error messages directly in admin/operator UI
 
-## 11. Postman and OpenAPI Usage
+## 12. Postman and OpenAPI Usage
 
 Available integration artifacts:
 
@@ -340,7 +387,7 @@ The Postman collection already supports:
 - bulk run capture
 - review-first flow testing
 
-## 12. What Is Stable Enough To Build Against
+## 13. What Is Stable Enough To Build Against
 
 Frontend can confidently build against:
 
@@ -354,7 +401,7 @@ Frontend can confidently build against:
 - readiness/version endpoints
 - storage-relative file reference semantics
 
-## 13. What Is Intentionally Deferred
+## 14. What Is Intentionally Deferred
 
 Do not design frontend dependencies on these yet:
 
@@ -365,7 +412,7 @@ Do not design frontend dependencies on these yet:
 - background job orchestration
 - export/reporting systems
 
-## 14. Practical Integration Checklist
+## 15. Practical Integration Checklist
 
 Before frontend integration starts:
 

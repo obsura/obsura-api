@@ -4822,6 +4822,28 @@
         ],
         "title": "JobStatus"
       },
+      "LabelFontFamily": {
+        "type": "string",
+        "enum": [
+          "sans",
+          "serif",
+          "mono"
+        ],
+        "title": "LabelFontFamily"
+      },
+      "LabelPosition": {
+        "type": "string",
+        "enum": [
+          "top_left",
+          "top_right",
+          "bottom_left",
+          "bottom_right",
+          "center",
+          "outside_top",
+          "outside_bottom"
+        ],
+        "title": "LabelPosition"
+      },
       "ManualTextSpan": {
         "properties": {
           "start_index": {
@@ -4878,6 +4900,15 @@
           "value_list"
         ],
         "title": "MatcherKind"
+      },
+      "OverlayShape": {
+        "type": "string",
+        "enum": [
+          "rectangle",
+          "rounded_rectangle",
+          "ellipse"
+        ],
+        "title": "OverlayShape"
       },
       "PaginationMeta": {
         "properties": {
@@ -5818,6 +5849,82 @@
               }
             ],
             "title": "Overlay Label"
+          },
+          "region_padding": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Region Padding",
+            "default": 0
+          },
+          "overlay_shape": {
+            "$ref": "#/components/schemas/OverlayShape",
+            "default": "rectangle"
+          },
+          "overlay_corner_radius": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Overlay Corner Radius",
+            "default": 12
+          },
+          "outline_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outline Color"
+          },
+          "outline_width": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Outline Width",
+            "default": 0
+          },
+          "label_color": {
+            "type": "string",
+            "title": "Label Color",
+            "default": "#FFFFFF"
+          },
+          "label_background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Background Color"
+          },
+          "label_position": {
+            "$ref": "#/components/schemas/LabelPosition",
+            "default": "top_left"
+          },
+          "label_font_family": {
+            "$ref": "#/components/schemas/LabelFontFamily",
+            "default": "sans"
+          },
+          "label_font_size": {
+            "type": "integer",
+            "maximum": 96.0,
+            "minimum": 8.0,
+            "title": "Label Font Size",
+            "default": 14
+          },
+          "label_padding": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Label Padding",
+            "default": 4
+          },
+          "label_margin": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Label Margin",
+            "default": 4
           }
         },
         "additionalProperties": false,

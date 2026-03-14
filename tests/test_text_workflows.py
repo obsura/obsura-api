@@ -137,3 +137,24 @@ def test_built_in_technical_detectors_cover_common_secret_shapes(client) -> None
     assert "SECRET_VALUE" in entity_types
     assert "SSH_PUBLIC_KEY" in entity_types
     assert "PRIVATE_KEY" in entity_types
+
+
+def test_text_transform_supports_partial_mask_for_frontend_customization(client) -> None:
+    response = client.post(
+        "/api/v1/workflows/text/analyze-transform",
+        json={
+            "content": "Contact me at john.doe@example.com",
+            "exact_values": ["john.doe@example.com"],
+            "default_transformation": {
+                "mode": "partial_mask",
+                "prefix_visible": 2,
+                "suffix_visible": 12,
+                "mask_character": "*",
+            },
+            "persist_job": False,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["output_text"] == "Contact me at jo******@example.com"
