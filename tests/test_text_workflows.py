@@ -48,7 +48,10 @@ def test_text_review_and_transform_flow(client) -> None:
 
     transform_response = client.post(
         "/api/v1/workflows/text/transform",
-        json={"job_id": analysis["job_id"]},
+        json={
+            "job_id": analysis["job_id"],
+            "content": "Connect to https://internal.example.com from 10.0.0.1",
+        },
     )
     assert transform_response.status_code == 200
     transformed = transform_response.json()["data"]
@@ -57,7 +60,9 @@ def test_text_review_and_transform_flow(client) -> None:
     job_response = client.get(f"/api/v1/jobs/{analysis['job_id']}")
     assert job_response.status_code == 200
     job = job_response.json()["data"]
+    assert job["source_text"] is None
     assert job["outputs"]
+    assert job["outputs"][0]["output_text"] is None
 
 
 def test_stable_alias_workflow(client) -> None:
@@ -92,14 +97,14 @@ def test_text_transform_requires_explicit_pending_opt_in(client) -> None:
 
     default_transform_response = client.post(
         "/api/v1/workflows/text/transform",
-        json={"job_id": analysis["job_id"]},
+        json={"job_id": analysis["job_id"], "content": "secret=alpha"},
     )
     assert default_transform_response.status_code == 200
     assert default_transform_response.json()["data"]["output_text"] == "secret=alpha"
 
     pending_transform_response = client.post(
         "/api/v1/workflows/text/transform",
-        json={"job_id": analysis["job_id"], "include_pending": True},
+        json={"job_id": analysis["job_id"], "content": "secret=alpha", "include_pending": True},
     )
     assert pending_transform_response.status_code == 200
     assert pending_transform_response.json()["data"]["output_text"] == "secret=[REDACTED]"

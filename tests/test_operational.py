@@ -88,9 +88,8 @@ def test_storage_service_uses_safe_relative_references(tmp_path) -> None:
     )
     storage = StorageService(settings)
 
-    upload_path = storage.save_upload(b"abc", "evidence.PNG")
-    output_reference = storage.storage_reference_for(upload_path)
+    upload_reference = storage.save_upload(b"abc", "evidence.PNG")
+    output_reference = storage.storage_reference_for(upload_reference)
 
-    assert upload_path.is_absolute()
     assert output_reference.startswith("uploads/")
-    assert storage.resolve_stored_path(output_reference) == upload_path
+    assert storage.read_stored_bytes(output_reference) == b"abc"

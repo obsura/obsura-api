@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from PIL import Image as PILImage
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from obsura_api import __version__
-from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 from obsura_api.api.router import api_router
 from obsura_api.api.responses import (
@@ -31,9 +30,15 @@ from obsura_api.domain.operational import ServiceRootInfo
 from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import build_ocr_provider
 from obsura_api.services.providers.pii import build_pii_detector
+from obsura_api.services.privacy import scrub_persisted_sensitive_data
 from obsura_api.services.storage import StorageService
 
 logger = logging.getLogger(__name__)
+NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, private, max-age=0",
+    "Pragma": "no-cache",
+    "X-Content-Type-Options": "nosniff",
+}
 
 OPENAPI_TAGS = [
     {
@@ -123,12 +128,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     session_factory = create_session_factory(engine)
     storage = StorageService(settings)
     storage.assert_ready()
+    scrubbed_disk_files = storage.purge_sensitive_storage()
+    scrub_counts = {"jobs": 0, "outputs": 0, "findings": 0}
+    session = session_factory()
+    try:
+        if session is not None:
+            scrub_counts = scrub_persisted_sensitive_data(session)
+    finally:
+        close = getattr(session, "close", None)
+        if callable(close):
+            close()
     ocr_provider = build_ocr_provider(settings)
     face_detector = build_face_detector(settings)
     pii_detector = build_pii_detector(settings)
+    PILImage.MAX_IMAGE_PIXELS = settings.max_image_pixels
     logger.info("Using `%s` OCR backend", ocr_provider.name)
     logger.info("Using `%s` face detector backend", face_detector.name)
     logger.info("Using `%s` PII detector backend", pii_detector.name)
+    logger.info(
+        "Sensitive data scrub completed: %s jobs, %s outputs, %s findings, %s disk files",
+        scrub_counts["jobs"],
+        scrub_counts["outputs"],
+        scrub_counts["findings"],
+        scrubbed_disk_files,
+    )
 
     app = FastAPI(
         title=settings.app_name,
@@ -162,6 +185,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
+    @app.middleware("http")
+    async def secure_response_headers(request: Request, call_next):
+        response = await call_next(request)
+        for key, value in NO_STORE_HEADERS.items():
+            response.headers.setdefault(key, value)
+        return response
+
     @app.get("/", include_in_schema=False, response_model=ServiceRootInfo)
     @app.get("/api", include_in_schema=False, response_model=ServiceRootInfo)
     def api_root(request: Request) -> ServiceRootInfo:
@@ -188,9 +218,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
-    app.mount(
-        settings.media_mount_path,
-        StaticFiles(directory=settings.storage_root),
-        name="media",
-    )
+
+    @app.get(f"{settings.media_mount_path}" + "/{artifact_path:path}", include_in_schema=False)
+    def serve_media_artifact(artifact_path: str) -> Response:
+        reference = artifact_path.lstrip("/")
+        if not storage.is_public_reference(reference):
+            raise HTTPException(status_code=404, detail="Media artifact not found")
+        try:
+            content = storage.read_stored_bytes(reference)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="Media artifact not found") from exc
+        return Response(
+            content=content,
+            media_type=storage.get_media_type(reference),
+            headers=dict(NO_STORE_HEADERS),
+        )
+
     return app

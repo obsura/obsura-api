@@ -28,6 +28,11 @@ def _resolve_stored_path(client, storage_reference: str) -> Path:
     return client.app.state.container.storage.resolve_stored_path(storage_reference)
 
 
+def _open_stored_image(client, storage_reference: str) -> Image.Image:
+    image_bytes = client.app.state.container.storage.read_stored_bytes(storage_reference)
+    return Image.open(BytesIO(image_bytes))
+
+
 def test_image_region_transformation_persists_output(client) -> None:
     image = Image.new("RGB", (20, 20), color="white")
     buffer = BytesIO()
@@ -60,10 +65,12 @@ def test_image_region_transformation_persists_output(client) -> None:
     assert response.status_code == 200
     body = response.json()["data"]
     assert body["stored_output_path"].startswith("outputs/")
-    output_path = _resolve_stored_path(client, body["stored_output_path"])
-    assert output_path.exists()
-    transformed = Image.open(output_path)
+    assert body["stored_input_path"] is None
+    media_response = client.get(body["media_url"])
+    assert media_response.status_code == 200
+    transformed = Image.open(BytesIO(media_response.content))
     assert transformed.getpixel((5, 5)) != (255, 255, 255)
+    assert not list(client.app.state.container.settings.storage_root.rglob("*.png"))
 
 
 def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
@@ -102,11 +109,11 @@ def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
         json={"job_id": analysis["job_id"]},
     )
     assert transform_without_review.status_code == 200
-    unchanged_path = _resolve_stored_path(
+    unchanged = _open_stored_image(
         client,
         transform_without_review.json()["data"]["stored_output_path"],
     )
-    assert Image.open(unchanged_path).getpixel((5, 5)) == (255, 255, 255)
+    assert unchanged.getpixel((5, 5)) == (255, 255, 255)
 
     review_response = client.post(
         f"/api/v1/jobs/{analysis['job_id']}/review",
@@ -130,12 +137,10 @@ def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
         json={"job_id": analysis["job_id"]},
     )
     assert transform_with_review.status_code == 200
-    reviewed_path = _resolve_stored_path(
+    transformed = _open_stored_image(
         client,
         transform_with_review.json()["data"]["stored_output_path"],
     )
-    assert reviewed_path.exists()
-    transformed = Image.open(reviewed_path)
     assert transformed.getpixel((5, 5)) != (255, 255, 255)
 
 
@@ -269,12 +274,67 @@ def test_ocr_derived_image_finding_can_be_reviewed_and_transformed(client) -> No
         json={"job_id": analysis["job_id"]},
     )
     assert transform_response.status_code == 200
-    output_path = _resolve_stored_path(
+    transformed = _open_stored_image(
         client,
         transform_response.json()["data"]["stored_output_path"],
     )
-    transformed = Image.open(output_path)
     assert transformed.getpixel((8, 5)) != (255, 255, 255)
+
+
+def test_persisted_image_job_hides_source_reference_and_raw_ocr_text(client) -> None:
+    client.app.state.container.ocr_provider = FakeOCRProvider(
+        [
+            OCRBlock(
+                text="secret alpha",
+                region=BoundingBox(x=0, y=0, width=12, height=10),
+                confidence=0.91,
+                tokens=[
+                    OCRToken(
+                        text="secret",
+                        region=BoundingBox(x=0, y=0, width=6, height=10),
+                        confidence=0.91,
+                    ),
+                    OCRToken(
+                        text="alpha",
+                        region=BoundingBox(x=7, y=0, width=5, height=10),
+                        confidence=0.91,
+                    ),
+                ],
+            )
+        ]
+    )
+
+    image = Image.new("RGB", (20, 20), color="white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+
+    analysis_response = client.post(
+        "/api/v1/workflows/images/analyze",
+        files={"file": ("ocr.png", buffer.getvalue(), "image/png")},
+        data={
+            "manifest_json": json.dumps(
+                {
+                    "title": "OCR image review job",
+                    "content_type": "screenshot",
+                    "detect_text": True,
+                    "apply_builtins": False,
+                    "exact_values": ["alpha"],
+                    "persist_job": True,
+                }
+            )
+        },
+    )
+
+    assert analysis_response.status_code == 200
+    job_id = analysis_response.json()["data"]["job_id"]
+
+    job_response = client.get(f"/api/v1/jobs/{job_id}")
+    assert job_response.status_code == 200
+    job = job_response.json()["data"]
+    assert job["source_file_path"] is None
+    assert job["findings"][0]["matched_text_preview"] is None
+    assert "ocr_text" not in job["findings"][0]["metadata"]
+    assert job["findings"][0]["metadata"]["ocr_text_hash"]
 
 
 def test_image_workflow_rejects_invalid_manifest_json(client) -> None:

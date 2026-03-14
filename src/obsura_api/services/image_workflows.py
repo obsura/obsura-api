@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from io import BytesIO
 from typing import Iterable
 
 from fastapi import HTTPException, status
-from PIL import Image, ImageDraw, ImageFilter, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFilter, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
@@ -24,12 +25,26 @@ from obsura_api.domain.workflows import (
 
 from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import finding_to_schema
+from obsura_api.services.privacy import sanitize_persisted_finding_metadata
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.providers.ocr import OCRBlock, OCRProvider
 from obsura_api.services.providers.pii import PIIDetector, NoOpPIIDetector
 from obsura_api.services.storage import StorageService
 from obsura_api.services.studio import StudioService
 from obsura_api.services.utils import hash_value, preview_value, summarize_findings
+
+
+SUPPORTED_IMAGE_FORMATS = {"BMP", "GIF", "JPEG", "PNG", "TIFF", "WEBP"}
+
+
+@dataclass(slots=True)
+class SanitizedImagePayload:
+    """A validated and metadata-stripped image payload."""
+
+    image: Image.Image
+    bytes: bytes
+    media_type: str
+    suffix: str
 
 
 class ImageWorkflowService:
@@ -63,16 +78,18 @@ class ImageWorkflowService:
         filename: str,
         manifest: ImageWorkflowManifest,
     ) -> ImageWorkflowResponse:
-        image = self._load_image(file_bytes)
-        findings = self._build_findings(file_bytes, manifest, image_size=image.size)
-        stored_input_path = None
+        payload = self._sanitize_image_payload(file_bytes)
+        findings = self._build_findings(payload.bytes, manifest, image_size=payload.image.size)
         source_file_path = None
         job_id = None
         if manifest.persist_job:
             if self._should_persist_source_file(manifest):
-                stored_input = self.storage.save_upload(file_bytes, filename)
-                source_file_path = str(stored_input)
-                stored_input_path = self.storage.storage_reference_for(stored_input)
+                source_file_path = self.storage.save_upload(
+                    payload.bytes,
+                    filename,
+                    suffix=payload.suffix,
+                    media_type=payload.media_type,
+                )
             job_id = self._persist_job(
                 title=manifest.title,
                 content_type=manifest.content_type,
@@ -84,7 +101,7 @@ class ImageWorkflowService:
         return ImageWorkflowResponse(
             job_id=job_id,
             findings=findings,
-            stored_input_path=stored_input_path,
+            stored_input_path=None,
             summary=summarize_findings(findings),
         )
 
@@ -95,24 +112,26 @@ class ImageWorkflowService:
         filename: str,
         manifest: ImageWorkflowManifest,
     ) -> ImageWorkflowResponse:
-        image = self._load_image(file_bytes)
-        findings = self._build_findings(file_bytes, manifest, image_size=image.size)
+        payload = self._sanitize_image_payload(file_bytes)
+        image = payload.image.copy()
+        findings = self._build_findings(payload.bytes, manifest, image_size=image.size)
         for finding in findings:
             if finding.region is None:
                 continue
             rule = finding.transformation or TransformationRule(mode=TransformationMode.MASK)
             self._apply_region(image, finding, rule)
 
-        stored_input_path = None
         source_file_path = None
         job_id = None
         stored_output = self.storage.save_image(image)
-        stored_output_path = self.storage.storage_reference_for(stored_output)
         if manifest.persist_job:
             if self._should_persist_source_file(manifest):
-                stored_input = self.storage.save_upload(file_bytes, filename)
-                source_file_path = str(stored_input)
-                stored_input_path = self.storage.storage_reference_for(stored_input)
+                source_file_path = self.storage.save_upload(
+                    payload.bytes,
+                    filename,
+                    suffix=payload.suffix,
+                    media_type=payload.media_type,
+                )
             job_id = self._persist_job(
                 title=manifest.title,
                 content_type=manifest.content_type,
@@ -125,8 +144,8 @@ class ImageWorkflowService:
         return ImageWorkflowResponse(
             job_id=job_id,
             findings=findings,
-            stored_input_path=stored_input_path,
-            stored_output_path=stored_output_path,
+            stored_input_path=None,
+            stored_output_path=stored_output,
             media_url=self.storage.media_url_for(stored_output),
             summary=summarize_findings(findings),
         )
@@ -153,8 +172,7 @@ class ImageWorkflowService:
             self._apply_override(stored_findings, override)
 
         try:
-            source_path = self.storage.resolve_stored_path(job.source_file_path)
-            file_bytes = source_path.read_bytes()
+            file_bytes = self.storage.read_stored_bytes(job.source_file_path)
         except FileNotFoundError as exc:
             raise HTTPException(
                 status.HTTP_404_NOT_FOUND,
@@ -166,7 +184,7 @@ class ImageWorkflowService:
                 detail=str(exc),
             ) from exc
 
-        image = self._load_image(file_bytes)
+        image = self._sanitize_image_payload(file_bytes).image
         findings = [finding_to_schema(item) for item in job.findings]
         self._validate_findings_within_bounds(findings, image.size)
         default_transformation = self._resolve_default_transformation(job.configuration_ids)
@@ -199,8 +217,8 @@ class ImageWorkflowService:
         return ImageWorkflowResponse(
             job_id=job.id,
             findings=findings,
-            stored_input_path=self.storage.storage_reference_for(source_path),
-            stored_output_path=self.storage.storage_reference_for(stored_output),
+            stored_input_path=None,
+            stored_output_path=stored_output,
             media_url=self.storage.media_url_for(stored_output),
             summary=summarize_findings(findings),
         )
@@ -341,9 +359,10 @@ class ImageWorkflowService:
                             default_transformation,
                         ),
                         metadata={
-                            "ocr_text": block.text,
                             "ocr_confidence": int(round(block.confidence * 100)),
                             "ocr_detection_source": text_finding.source.value,
+                            "ocr_text_hash": text_finding.matched_text_hash or hash_value(block.text),
+                            "ocr_token_count": len(block.tokens),
                         },
                     ),
                 )
@@ -405,9 +424,20 @@ class ImageWorkflowService:
             height=bottom - top,
         )
 
-    def _load_image(self, file_bytes: bytes) -> Image.Image:
+    def _sanitize_image_payload(self, file_bytes: bytes) -> SanitizedImagePayload:
         try:
             with Image.open(BytesIO(file_bytes)) as opened:
+                image_format = (opened.format or "").upper()
+                if image_format not in SUPPORTED_IMAGE_FORMATS:
+                    raise HTTPException(
+                        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                        detail="Uploaded file is not a supported image format",
+                    )
+                if getattr(opened, "n_frames", 1) != 1:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST,
+                        detail="Animated or multi-frame images are not supported",
+                    )
                 width, height = opened.size
                 if width * height > self.settings.max_image_pixels:
                     raise HTTPException(
@@ -417,6 +447,41 @@ class ImageWorkflowService:
                             f"{self.settings.max_image_pixels}"
                         ),
                     )
+                opened.verify()
+
+            with Image.open(BytesIO(file_bytes)) as opened:
+                normalized = ImageOps.exif_transpose(opened)
+                normalized.load()
+                image = normalized.convert("RGB")
+        except HTTPException:
+            raise
+        except Image.DecompressionBombError as exc:
+            raise HTTPException(
+                status.HTTP_413_CONTENT_TOO_LARGE,
+                detail="Image is too large to process safely",
+            ) from exc
+        except UnidentifiedImageError as exc:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is not a valid image",
+            ) from exc
+        except OSError as exc:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded image could not be processed",
+            ) from exc
+
+        suffix = f".{self.storage.output_extension}"
+        return SanitizedImagePayload(
+            image=image,
+            bytes=self.storage.render_image_bytes(image),
+            media_type=self.storage.output_media_type,
+            suffix=suffix,
+        )
+
+    def _load_image(self, file_bytes: bytes) -> Image.Image:
+        try:
+            with Image.open(BytesIO(file_bytes)) as opened:
                 opened.load()
                 return opened.convert("RGB")
         except HTTPException:
@@ -561,6 +626,8 @@ class ImageWorkflowService:
                 entity_type=finding.entity_type,
                 entity_name=finding.entity_name,
                 region=finding.region.model_dump() if finding.region else None,
+                matched_text_preview=None,
+                matched_text_hash=finding.matched_text_hash,
                 confidence=finding.confidence,
                 decision=finding.decision,
                 transformation=(
@@ -568,7 +635,7 @@ class ImageWorkflowService:
                     if finding.transformation is not None
                     else None
                 ),
-                extra_data=finding.metadata,
+                extra_data=sanitize_persisted_finding_metadata(finding.metadata),
             )
             self.session.add(row)
             self.session.flush()

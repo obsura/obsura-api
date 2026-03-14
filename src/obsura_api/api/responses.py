@@ -14,11 +14,18 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from obsura_api.domain.common import ApiError, ApiResponse, PaginationMeta
 
 logger = logging.getLogger(__name__)
+SENSITIVE_DETAIL_KEYS = {"body", "content", "file", "file_bytes", "input", "manifest_json", "text"}
 
 
 def _sanitize_details(value: Any) -> Any:
     if isinstance(value, dict):
-        return {key: _sanitize_details(item) for key, item in value.items()}
+        sanitized: dict[str, Any] = {}
+        for key, item in value.items():
+            if str(key).lower() in SENSITIVE_DETAIL_KEYS:
+                sanitized[key] = "[REDACTED]"
+            else:
+                sanitized[key] = _sanitize_details(item)
+        return sanitized
     if isinstance(value, list):
         return [_sanitize_details(item) for item in value]
     if isinstance(value, tuple):
@@ -107,7 +114,8 @@ def validation_exception_handler(
 def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Return unexpected exceptions in the unified envelope."""
 
-    logger.exception("Unhandled application error on %s %s", request.method, request.url.path)
+    _ = exc
+    logger.error("Unhandled application error on %s %s", request.method, request.url.path)
     return error_response(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         code="internal_error",

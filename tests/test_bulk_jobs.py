@@ -15,7 +15,7 @@ def create_bulk_text_job(client, *, items, **overrides):
             "title": overrides.pop("title", "Bulk run"),
             "apply_builtins": overrides.pop("apply_builtins", False),
             "exact_values": overrides.pop("exact_values", ["secret"]),
-            "persist_source_content": overrides.pop("persist_source_content", True),
+            "persist_source_content": overrides.pop("persist_source_content", False),
             "items": items,
             **overrides,
         },
@@ -408,7 +408,22 @@ def test_bulk_transform_generates_outputs_for_reviewed_jobs(client) -> None:
     job_ids = [item["job_id"] for item in bulk["items"]]
     approve_all_findings(client, bulk["id"], job_ids)
 
-    response = client.post("/api/v1/bulk/text/transform", json={"bulk_id": bulk["id"]})
+    response = client.post(
+        "/api/v1/bulk/text/transform",
+        json={
+            "bulk_id": bulk["id"],
+            "job_overrides": [
+                {
+                    "job_id": job_ids[0],
+                    "content": "token=secret",
+                },
+                {
+                    "job_id": job_ids[1],
+                    "content": "api=secret",
+                },
+            ],
+        },
+    )
 
     assert response.status_code == 200
     body = response.json()

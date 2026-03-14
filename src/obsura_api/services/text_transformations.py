@@ -20,7 +20,7 @@ from obsura_api.domain.workflows import (
     TextTransformResponse,
 )
 from obsura_api.services.jobs import finding_to_schema
-from obsura_api.services.utils import normalize_token, summarize_findings
+from obsura_api.services.utils import hash_value, normalize_token, summarize_findings
 
 
 SOURCE_PRIORITY = {
@@ -64,8 +64,11 @@ class TextTransformationService:
         output = JobOutput(
             job_id=job.id,
             content_type=job.content_type,
-            output_text=output_text,
-            extra_data={"replacement_count": replacement_count},
+            output_text=None,
+            extra_data={
+                "replacement_count": replacement_count,
+                "output_hash": hash_value(output_text),
+            },
         )
         self.session.add(output)
         self.session.commit()
@@ -110,8 +113,11 @@ class TextTransformationService:
             output = JobOutput(
                 job_id=job.id,
                 content_type=job.content_type,
-                output_text=output_text,
-                extra_data={"replacement_count": len(replacements)},
+                output_text=None,
+                extra_data={
+                    "replacement_count": len(replacements),
+                    "output_hash": hash_value(output_text),
+                },
             )
             self.session.add(output)
             if commit:
