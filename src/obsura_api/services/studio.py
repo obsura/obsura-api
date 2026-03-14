@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from obsura_api.db.models import CustomEntity, Pattern, StudioConfiguration
 from obsura_api.domain.common import PaginationMeta, PaginationParams, build_pagination_meta
 from obsura_api.domain.enums import MatcherKind
+from obsura_api.domain.errors import NotFoundError
 from obsura_api.domain.studio import (
     ConfigurationCreate,
     ConfigurationRead,
@@ -56,13 +56,13 @@ class StudioService:
     def get_pattern(self, pattern_id: str) -> PatternRead:
         pattern = self.session.get(Pattern, pattern_id)
         if pattern is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Pattern not found")
+            raise NotFoundError("Pattern not found")
         return PatternRead.model_validate(pattern, from_attributes=True)
 
     def update_pattern(self, pattern_id: str, payload: PatternUpdate) -> PatternRead:
         pattern = self.session.get(Pattern, pattern_id)
         if pattern is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Pattern not found")
+            raise NotFoundError("Pattern not found")
         for field_name, value in payload.model_dump(exclude_unset=True).items():
             setattr(pattern, field_name, value)
         self.session.commit()
@@ -110,7 +110,7 @@ class StudioService:
     def get_custom_entity(self, entity_id: str) -> CustomEntityRead:
         entity = self.session.get(CustomEntity, entity_id)
         if entity is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Custom entity not found")
+            raise NotFoundError("Custom entity not found")
         return CustomEntityRead.model_validate(entity, from_attributes=True)
 
     def update_custom_entity(
@@ -120,7 +120,7 @@ class StudioService:
     ) -> CustomEntityRead:
         entity = self.session.get(CustomEntity, entity_id)
         if entity is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Custom entity not found")
+            raise NotFoundError("Custom entity not found")
         for field_name, value in payload.model_dump(exclude_unset=True).items():
             setattr(entity, field_name, value)
         self.session.commit()
@@ -170,7 +170,7 @@ class StudioService:
     def get_configuration(self, configuration_id: str) -> ConfigurationRead:
         configuration = self.session.get(StudioConfiguration, configuration_id)
         if configuration is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Configuration not found")
+            raise NotFoundError("Configuration not found")
         return self._configuration_to_schema(configuration)
 
     def update_configuration(
@@ -180,7 +180,7 @@ class StudioService:
     ) -> ConfigurationRead:
         configuration = self.session.get(StudioConfiguration, configuration_id)
         if configuration is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Configuration not found")
+            raise NotFoundError("Configuration not found")
         updates = payload.model_dump(exclude_unset=True)
         self._validate_configuration_references(
             pattern_ids=updates.get("pattern_ids", configuration.pattern_ids),
@@ -267,8 +267,5 @@ class StudioService:
         missing_ids = [item_id for item_id in expected_ids if item_id not in by_id]
         if missing_ids:
             missing_label = ", ".join(missing_ids)
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail=f"{entity_label} reference not found: {missing_label}",
-            )
+            raise NotFoundError(f"{entity_label} reference not found: {missing_label}")
         return [by_id[item_id] for item_id in expected_ids]

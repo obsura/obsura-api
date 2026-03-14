@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
@@ -20,6 +19,13 @@ from obsura_api.domain.csv_workflows import (
     CSVWorkflowResponse,
 )
 from obsura_api.domain.enums import ContentType, FindingKind, JobStatus
+from obsura_api.domain.errors import (
+    BadRequestError,
+    NotFoundError,
+    PayloadTooLargeError,
+    UnprocessableContentError,
+    UnsupportedMediaTypeError,
+)
 from obsura_api.domain.pii import PIIDetectionOptions
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingOverride, FindingRecord
@@ -183,12 +189,9 @@ class CSVWorkflowService:
         _ = filename
         job = self.session.get(Job, request.job_id)
         if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise NotFoundError("Job not found")
         if job.content_type is not ContentType.CSV:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Only CSV jobs can be transformed with this endpoint",
-            )
+            raise BadRequestError("Only CSV jobs can be transformed with this endpoint")
 
         csv_metadata = self._csv_job_metadata(job.findings)
         parsed = self._parse_csv(
@@ -304,46 +307,31 @@ class CSVWorkflowService:
         )
         raw_rows = [list(row) for row in reader]
         if not raw_rows:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded CSV is empty",
-            )
+            raise BadRequestError("Uploaded CSV is empty")
         if len(raw_rows) > self.settings.max_csv_rows:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(
-                    f"CSV exceeds the configured maximum row count of {self.settings.max_csv_rows}"
-                ),
+            raise PayloadTooLargeError(
+                f"CSV exceeds the configured maximum row count of {self.settings.max_csv_rows}",
             )
         column_count = max((len(row) for row in raw_rows), default=0)
         if column_count > self.settings.max_csv_columns:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(
-                    "CSV exceeds the configured maximum column count of "
-                    f"{self.settings.max_csv_columns}"
-                ),
+            raise PayloadTooLargeError(
+                "CSV exceeds the configured maximum column count of "
+                f"{self.settings.max_csv_columns}",
             )
 
         total_characters = 0
         for row in raw_rows:
             for cell in row:
                 if len(cell) > self.settings.max_bulk_text_item_characters:
-                    raise HTTPException(
-                        status.HTTP_413_CONTENT_TOO_LARGE,
-                        detail=(
-                            "CSV cell exceeds the configured maximum of "
-                            f"{self.settings.max_bulk_text_item_characters} characters"
-                        ),
+                    raise PayloadTooLargeError(
+                        "CSV cell exceeds the configured maximum of "
+                        f"{self.settings.max_bulk_text_item_characters} characters",
                     )
                 total_characters += len(cell)
                 if total_characters > self.settings.max_csv_characters:
-                    raise HTTPException(
-                        status.HTTP_413_CONTENT_TOO_LARGE,
-                        detail=(
-                            "CSV exceeds the configured maximum character count of "
-                            f"{self.settings.max_csv_characters}"
-                        ),
+                    raise PayloadTooLargeError(
+                        "CSV exceeds the configured maximum character count of "
+                        f"{self.settings.max_csv_characters}",
                     )
 
         header_row = raw_rows[0] if has_header else []
@@ -439,9 +427,8 @@ class CSVWorkflowService:
             current_hash = self._csv_cell_hash(finding)
             existing_hash = cell_hashes.get(key)
             if existing_hash is not None and existing_hash != current_hash:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail="Stored CSV finding metadata is internally inconsistent",
+                raise UnprocessableContentError(
+                    "Stored CSV finding metadata is internally inconsistent",
                 )
             cell_hashes[key] = current_hash
             column_names[key] = self._csv_column_name(finding)
@@ -454,31 +441,24 @@ class CSVWorkflowService:
         for (physical_row_number, column_index), cell_findings in findings_by_cell.items():
             row_index = row_map.get(physical_row_number)
             if row_index is None:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=f"Resubmitted CSV is missing reviewed row {physical_row_number}",
+                raise UnprocessableContentError(
+                    f"Resubmitted CSV is missing reviewed row {physical_row_number}",
                 )
             row = output_rows[row_index]
             column_offset = column_index - 1
             if column_offset >= len(row):
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=(
-                        "Resubmitted CSV is missing the reviewed cell at row "
-                        f"{physical_row_number}, column {column_index}"
-                    ),
+                raise UnprocessableContentError(
+                    "Resubmitted CSV is missing the reviewed cell at row "
+                    f"{physical_row_number}, column {column_index}",
                 )
             original_value = row[column_offset]
             if (
                 validate_cell_hash
                 and hash_value(original_value) != cell_hashes[(physical_row_number, column_index)]
             ):
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=(
-                        "Resubmitted CSV cell content does not match the reviewed job at row "
-                        f"{physical_row_number}, column {column_index}"
-                    ),
+                raise UnprocessableContentError(
+                    "Resubmitted CSV cell content does not match the reviewed job at row "
+                    f"{physical_row_number}, column {column_index}",
                 )
 
             output_value, cell_replacements = self.text_transformations.apply_findings(
@@ -551,17 +531,11 @@ class CSVWorkflowService:
 
     def _decode_csv(self, file_bytes: bytes) -> str:
         if not file_bytes:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded CSV is empty",
-            )
+            raise BadRequestError("Uploaded CSV is empty")
         try:
             return file_bytes.decode("utf-8-sig")
         except UnicodeDecodeError as exc:
-            raise HTTPException(
-                status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail="CSV uploads must be UTF-8 or UTF-8 with BOM",
-            ) from exc
+            raise UnsupportedMediaTypeError("CSV uploads must be UTF-8 or UTF-8 with BOM") from exc
 
     def _resolve_headers(self, row: list[str], column_count: int, has_header: bool) -> list[str]:
         if not has_header:
@@ -582,10 +556,7 @@ class CSVWorkflowService:
 
     def _csv_job_metadata(self, findings: list[JobFinding]) -> dict[str, object]:
         if not findings:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="CSV job has no persisted findings to transform",
-            )
+            raise UnprocessableContentError("CSV job has no persisted findings to transform")
         metadata = findings[0].extra_data
         has_header = metadata.get("csv_has_header")
         delimiter = metadata.get("csv_delimiter")
@@ -595,16 +566,10 @@ class CSVWorkflowService:
             or not isinstance(delimiter, str)
             or not isinstance(quotechar, str)
         ):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="CSV job is missing safe format metadata",
-            )
+            raise UnprocessableContentError("CSV job is missing safe format metadata")
         resolved_delimiter = "\t" if delimiter == "\\t" else delimiter
         if resolved_delimiter not in {",", ";", "\t"} or len(quotechar) != 1:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="CSV job contains unsupported format metadata",
-            )
+            raise UnprocessableContentError("CSV job contains unsupported format metadata")
         return {
             "has_header": has_header,
             "delimiter": resolved_delimiter,
@@ -614,37 +579,25 @@ class CSVWorkflowService:
     def _csv_row_number(self, finding: FindingRecord) -> int:
         value = finding.metadata.get("csv_row_number")
         if not isinstance(value, int) or value < 1:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="CSV finding is missing safe row metadata",
-            )
+            raise UnprocessableContentError("CSV finding is missing safe row metadata")
         return value
 
     def _csv_column_index(self, finding: FindingRecord) -> int:
         value = finding.metadata.get("csv_column_index")
         if not isinstance(value, int) or value < 1:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="CSV finding is missing safe column metadata",
-            )
+            raise UnprocessableContentError("CSV finding is missing safe column metadata")
         return value
 
     def _csv_column_name(self, finding: FindingRecord) -> str:
         value = finding.metadata.get("csv_column_name")
         if not isinstance(value, str) or not value:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="CSV finding is missing safe column metadata",
-            )
+            raise UnprocessableContentError("CSV finding is missing safe column metadata")
         return value
 
     def _csv_cell_hash(self, finding: FindingRecord) -> str:
         value = finding.metadata.get("csv_cell_hash")
         if not isinstance(value, str) or not value:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="CSV finding is missing safe cell hash metadata",
-            )
+            raise UnprocessableContentError("CSV finding is missing safe cell hash metadata")
         return value
 
     def _apply_override(
@@ -656,10 +609,7 @@ class CSVWorkflowService:
             return
         finding = stored_findings.get(override.finding_id)
         if finding is None:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail=f"Finding {override.finding_id} not found",
-            )
+            raise NotFoundError(f"Finding {override.finding_id} not found")
         if override.decision is not None:
             finding.decision = override.decision
         if override.transformation is not None:

@@ -6,7 +6,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
@@ -19,6 +18,12 @@ from obsura_api.domain.documents import (
     DocumentWorkflowResponse,
 )
 from obsura_api.domain.enums import ContentType, JobStatus
+from obsura_api.domain.errors import (
+    BadRequestError,
+    ConflictError,
+    NotFoundError,
+    UnprocessableContentError,
+)
 from obsura_api.domain.pii import PIIDetectionOptions
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingOverride, FindingRecord
@@ -168,12 +173,9 @@ class DocumentWorkflowService:
         document = self._extract_document(file_bytes)
         job = self.session.get(Job, request.job_id)
         if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise NotFoundError("Job not found")
         if job.content_type is not ContentType.DOCUMENT:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Only document jobs can be transformed with this endpoint",
-            )
+            raise BadRequestError("Only document jobs can be transformed with this endpoint")
 
         stored_findings = {item.id: item for item in job.findings}
         for override in request.finding_overrides:
@@ -304,9 +306,8 @@ class DocumentWorkflowService:
             page_hash = self._document_page_hash(finding)
             existing_hash = page_hashes.get(page_number)
             if existing_hash is not None and existing_hash != page_hash:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail="Stored document finding metadata is internally inconsistent",
+                raise UnprocessableContentError(
+                    "Stored document finding metadata is internally inconsistent",
                 )
             page_hashes[page_number] = page_hash
 
@@ -320,12 +321,9 @@ class DocumentWorkflowService:
                 expected_hash = page_hashes[page.page_number]
                 actual_hash = hash_value(page.text)
                 if actual_hash != expected_hash:
-                    raise HTTPException(
-                        status.HTTP_422_UNPROCESSABLE_CONTENT,
-                        detail=(
-                            "Resubmitted PDF page content does not match the reviewed job for "
-                            f"page {page.page_number}"
-                        ),
+                    raise UnprocessableContentError(
+                        "Resubmitted PDF page content does not match the reviewed job for "
+                        f"page {page.page_number}",
                     )
 
             output_text, page_replacements = self.text_transformations.apply_findings(
@@ -357,9 +355,8 @@ class DocumentWorkflowService:
         missing_pages = sorted(set(findings_by_page) - set(page_lookup))
         if missing_pages:
             missing = ", ".join(str(page_number) for page_number in missing_pages)
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Resubmitted PDF is missing reviewed pages: {missing}",
+            raise UnprocessableContentError(
+                f"Resubmitted PDF is missing reviewed pages: {missing}",
             )
 
         return page_results, self._combine_page_output(page_results), replacements
@@ -378,28 +375,19 @@ class DocumentWorkflowService:
 
     def _extract_document(self, file_bytes: bytes) -> ExtractedDocument:
         if not self.document_extractor.supported:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                detail="PDF document workflows are not configured for this deployment",
-            )
+            raise ConflictError("PDF document workflows are not configured for this deployment")
         return self.document_extractor.extract_pdf(file_bytes)
 
     def _document_page_number(self, finding: FindingRecord) -> int:
         page_number = finding.metadata.get("document_page_number")
         if not isinstance(page_number, int) or page_number < 1:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Document finding is missing safe page metadata",
-            )
+            raise UnprocessableContentError("Document finding is missing safe page metadata")
         return page_number
 
     def _document_page_hash(self, finding: FindingRecord) -> str:
         page_hash = finding.metadata.get("document_page_text_hash")
         if not isinstance(page_hash, str) or not page_hash:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Document finding is missing safe page hash metadata",
-            )
+            raise UnprocessableContentError("Document finding is missing safe page hash metadata")
         return page_hash
 
     def _apply_override(
@@ -411,10 +399,7 @@ class DocumentWorkflowService:
             return
         finding = stored_findings.get(override.finding_id)
         if finding is None:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail=f"Finding {override.finding_id} not found",
-            )
+            raise NotFoundError(f"Finding {override.finding_id} not found")
         if override.decision is not None:
             finding.decision = override.decision
         if override.transformation is not None:

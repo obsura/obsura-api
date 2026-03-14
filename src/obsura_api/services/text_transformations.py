@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -17,6 +16,7 @@ from obsura_api.domain.enums import (
     ReviewDecision,
     TransformationMode,
 )
+from obsura_api.domain.errors import BadRequestError, NotFoundError, UnprocessableContentError
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
     FindingOverride,
@@ -56,10 +56,7 @@ class TextTransformationService:
 
     def transform_job(self, request: TextTransformRequest) -> TextTransformResponse:
         if not request.job_id:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="`job_id` is required for direct transform requests",
-            )
+            raise UnprocessableContentError("`job_id` is required for direct transform requests")
 
         job = self._load_text_job(str(request.job_id))
         return self.transform_loaded_job(job, request)
@@ -99,10 +96,7 @@ class TextTransformationService:
         """Transform a loaded text job."""
 
         if job.content_type not in {ContentType.TEXT, ContentType.STRUCTURED_TEXT}:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Only text jobs can be transformed with this endpoint",
-            )
+            raise BadRequestError("Only text jobs can be transformed with this endpoint")
 
         stored_findings = {item.id: item for item in job.findings}
         for override in request.finding_overrides:
@@ -110,9 +104,8 @@ class TextTransformationService:
 
         content = request.content or job.source_text
         if not content:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Job does not retain source text; resubmit content to transform it",
+            raise BadRequestError(
+                "Job does not retain source text; resubmit content to transform it",
             )
 
         findings = [finding_to_schema(item) for item in job.findings]
@@ -209,10 +202,7 @@ class TextTransformationService:
             return
         finding = stored_findings.get(override.finding_id)
         if finding is None:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail=f"Finding {override.finding_id} not found",
-            )
+            raise NotFoundError(f"Finding {override.finding_id} not found")
         if override.decision is not None:
             finding.decision = override.decision
         if override.transformation is not None:
@@ -308,9 +298,8 @@ class TextTransformationService:
 
     def _require_hash_salt(self) -> str:
         if self.settings is None or not self.settings.text_hash_salt:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=(
+            raise UnprocessableContentError(
+                (
                     "Hash transformations require OBSURA_TEXT_HASH_SALT to be configured "
                     "on this deployment"
                 ),
@@ -324,5 +313,5 @@ class TextTransformationService:
             .options(selectinload(Job.findings), selectinload(Job.outputs)),
         )
         if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise NotFoundError("Job not found")
         return job

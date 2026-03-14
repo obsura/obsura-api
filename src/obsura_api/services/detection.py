@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from fastapi import HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -19,6 +18,7 @@ from obsura_api.domain.enums import (
     MatcherKind,
     TransformationMode,
 )
+from obsura_api.domain.errors import PayloadTooLargeError, UnprocessableContentError
 from obsura_api.domain.pii import PIIDetectionOptions, merge_pii_detection_options
 from obsura_api.domain.studio import PatternMatcherDefinition
 from obsura_api.domain.transforms import TransformationRule
@@ -229,12 +229,9 @@ class TextDetectionService:
     def _validate_content_size(self, content: str) -> None:
         if len(content) <= self.settings.max_bulk_text_item_characters:
             return
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=(
-                "Text content exceeds the configured maximum of "
-                f"{self.settings.max_bulk_text_item_characters} characters"
-            ),
+        raise PayloadTooLargeError(
+            "Text content exceeds the configured maximum of "
+            f"{self.settings.max_bulk_text_item_characters} characters",
         )
 
     def build_findings(
@@ -485,7 +482,7 @@ class TextDetectionService:
         except TypeError:
             detected_entities = self.pii_detector.detect_entities(text)
         except ValueError as exc:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+            raise UnprocessableContentError(str(exc)) from exc
 
         for entity in detected_entities:
             if self._overlaps_existing_span(entity, existing_findings):
@@ -527,12 +524,9 @@ class TextDetectionService:
             and resolved.language not in supported_languages
         ):
             supported = ", ".join(supported_languages)
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"Unsupported PII language `{resolved.language}` for this deployment. "
-                    f"Supported languages: {supported}"
-                ),
+            raise UnprocessableContentError(
+                f"Unsupported PII language `{resolved.language}` for this deployment. "
+                f"Supported languages: {supported}",
             )
         return resolved
 
@@ -546,9 +540,8 @@ class TextDetectionService:
             configuration_name = getattr(
                 configuration, "name", getattr(configuration, "id", "configuration")
             )
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Configuration `{configuration_name}` has invalid `pii_detection` settings",
+            raise UnprocessableContentError(
+                f"Configuration `{configuration_name}` has invalid `pii_detection` settings",
             ) from exc
 
     def _detect_matcher(
