@@ -31,6 +31,11 @@ def test_pattern_from_selection_and_search(client) -> None:
             "tags": ["ops"],
             "pattern_ids": [pattern["id"]],
             "custom_entity_ids": [],
+            "pii_detection": {
+                "language": "en",
+                "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS"],
+                "context_words": ["email", "server"],
+            },
             "metadata": {"team": "platform"},
         },
     )
@@ -39,6 +44,11 @@ def test_pattern_from_selection_and_search(client) -> None:
     assert configuration_body["success"] is True
     configuration = configuration_body["data"]
     assert configuration["metadata"]["team"] == "platform"
+    assert configuration["pii_detection"] == {
+        "language": "en",
+        "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS"],
+        "context_words": ["email", "server"],
+    }
 
     search_response = client.get(
         "/api/v1/studio/search",

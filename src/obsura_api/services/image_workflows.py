@@ -7,12 +7,22 @@ from io import BytesIO
 from typing import Iterable
 
 from fastapi import HTTPException, status
-from PIL import Image, ImageDraw, ImageFilter, ImageOps, UnidentifiedImageError
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
 from obsura_api.db.models import Job, JobFinding, JobOutput
-from obsura_api.domain.enums import ContentType, FindingKind, FindingSource, JobStatus, ReviewDecision, TransformationMode
+from obsura_api.domain.enums import (
+    ContentType,
+    FindingKind,
+    FindingSource,
+    JobStatus,
+    LabelFontFamily,
+    LabelPosition,
+    OverlayShape,
+    ReviewDecision,
+    TransformationMode,
+)
 from obsura_api.domain.common import BoundingBox
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
@@ -118,7 +128,7 @@ class ImageWorkflowService:
         for finding in findings:
             if finding.region is None:
                 continue
-            rule = finding.transformation or TransformationRule(mode=TransformationMode.MASK)
+            rule = finding.transformation or TransformationRule(mode=TransformationMode.BLUR)
             self._apply_region(image, finding, rule)
 
         source_file_path = None
@@ -194,7 +204,7 @@ class ImageWorkflowService:
             if finding.region is None:
                 continue
             rule = finding.transformation or default_transformation or TransformationRule(
-                mode=TransformationMode.MASK,
+                mode=TransformationMode.BLUR,
             )
             self._apply_region(image, finding, rule)
 
@@ -321,12 +331,13 @@ class ImageWorkflowService:
             )
 
         ocr_blocks = self.ocr_provider.extract_text(file_bytes)
-        patterns, entities, text_default_transformation = (
+        patterns, entities, text_default_transformation, pii_detection = (
             self.text_detection.resolve_transient_detection_context(
                 content_type=ContentType.TEXT,
                 pattern_ids=manifest.pattern_ids,
                 custom_entity_ids=manifest.custom_entity_ids,
                 configuration_ids=manifest.configuration_ids,
+                pii_detection=manifest.pii_detection,
             )
         )
         findings: list[FindingRecord] = []
@@ -340,6 +351,7 @@ class ImageWorkflowService:
                 patterns=patterns,
                 entities=entities,
                 default_transformation=text_default_transformation,
+                pii_detection=pii_detection,
             )
             for text_finding in text_findings:
                 region = self._region_for_text_finding(block, text_finding)
@@ -406,7 +418,7 @@ class ImageWorkflowService:
             return raw_transformation
         if default_transformation is not None:
             return default_transformation
-        return TransformationRule(mode=TransformationMode.MASK)
+        return TransformationRule(mode=TransformationMode.BLUR)
 
     def _combine_regions(self, regions: Iterable[BoundingBox]) -> BoundingBox:
         items = list(regions)
@@ -541,30 +553,199 @@ class ImageWorkflowService:
         if finding.region is None:
             return
 
-        left = finding.region.x
-        top = finding.region.y
-        right = left + finding.region.width
-        bottom = top + finding.region.height
-        box = (left, top, right, bottom)
+        box = self._expanded_box(image.size, finding.region, padding=rule.region_padding)
         region = image.crop(box)
 
         if rule.mode is TransformationMode.BLUR:
             transformed = region.filter(ImageFilter.GaussianBlur(radius=rule.blur_radius))
-            image.paste(transformed, box)
-            return
-
-        if rule.mode is TransformationMode.PIXELATE:
-            reduced_width = max(1, finding.region.width // rule.pixelation_scale)
-            reduced_height = max(1, finding.region.height // rule.pixelation_scale)
+            self._paste_region(image, box, transformed, rule)
+        elif rule.mode is TransformationMode.PIXELATE:
+            region_width = max(box[2] - box[0], 1)
+            region_height = max(box[3] - box[1], 1)
+            reduced_width = max(1, region_width // rule.pixelation_scale)
+            reduced_height = max(1, region_height // rule.pixelation_scale)
             transformed = region.resize((reduced_width, reduced_height)).resize(region.size)
+            self._paste_region(image, box, transformed, rule)
+        else:
+            overlay = Image.new("RGBA", region.size, (0, 0, 0, 0))
+            overlay_draw = ImageDraw.Draw(overlay)
+            self._draw_shape(
+                overlay_draw,
+                self._local_box(region.size),
+                rule,
+                fill=rule.overlay_color,
+            )
+            composited = Image.alpha_composite(region.convert("RGBA"), overlay)
+            image.paste(composited.convert("RGB"), box)
+
+        self._decorate_region(image, box, rule)
+
+    def _expanded_box(
+        self,
+        image_size: tuple[int, int],
+        region: BoundingBox,
+        *,
+        padding: int,
+    ) -> tuple[int, int, int, int]:
+        image_width, image_height = image_size
+        left = max(0, region.x - padding)
+        top = max(0, region.y - padding)
+        right = min(image_width, region.x + region.width + padding)
+        bottom = min(image_height, region.y + region.height + padding)
+        return (left, top, right, bottom)
+
+    def _paste_region(
+        self,
+        image: Image.Image,
+        box: tuple[int, int, int, int],
+        transformed: Image.Image,
+        rule: TransformationRule,
+    ) -> None:
+        if rule.overlay_shape is OverlayShape.RECTANGLE:
             image.paste(transformed, box)
             return
+        mask = self._shape_mask(transformed.size, rule)
+        image.paste(transformed, box, mask)
 
+    def _shape_mask(self, size: tuple[int, int], rule: TransformationRule) -> Image.Image:
+        mask = Image.new("L", size, 0)
+        draw = ImageDraw.Draw(mask)
+        self._draw_shape(draw, self._local_box(size), rule, fill=255)
+        return mask
+
+    def _local_box(self, size: tuple[int, int]) -> tuple[int, int, int, int]:
+        width, height = size
+        return (0, 0, max(width - 1, 0), max(height - 1, 0))
+
+    def _draw_shape(
+        self,
+        draw: ImageDraw.ImageDraw,
+        box: tuple[int, int, int, int],
+        rule: TransformationRule,
+        *,
+        fill: str | int | None = None,
+        outline: str | None = None,
+        width: int = 0,
+    ) -> None:
+        if rule.overlay_shape is OverlayShape.ELLIPSE:
+            draw.ellipse(box, fill=fill, outline=outline, width=width)
+            return
+        if rule.overlay_shape is OverlayShape.ROUNDED_RECTANGLE:
+            max_radius = max(min(box[2] - box[0], box[3] - box[1]) // 2, 0)
+            radius = min(rule.overlay_corner_radius, max_radius)
+            draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
+            return
+        draw.rectangle(box, fill=fill, outline=outline, width=width)
+
+    def _decorate_region(
+        self,
+        image: Image.Image,
+        box: tuple[int, int, int, int],
+        rule: TransformationRule,
+    ) -> None:
         draw = ImageDraw.Draw(image)
-        draw.rectangle(box, fill=rule.overlay_color)
-        label = rule.overlay_label or rule.placeholder or finding.entity_name
-        if label:
-            draw.text((left + 4, top + 4), label, fill="white")
+        if rule.outline_color and rule.outline_width:
+            self._draw_shape(
+                draw,
+                box,
+                rule,
+                outline=rule.outline_color,
+                width=rule.outline_width,
+            )
+
+        label = self._resolve_overlay_label(rule)
+        if not label:
+            return
+
+        font = self._load_font(rule)
+        text_bounds = draw.textbbox((0, 0), label, font=font)
+        text_width = text_bounds[2] - text_bounds[0]
+        text_height = text_bounds[3] - text_bounds[1]
+        label_width = text_width + (rule.label_padding * 2)
+        label_height = text_height + (rule.label_padding * 2)
+        label_left, label_top = self._label_origin(
+            image.size,
+            box,
+            label_width=label_width,
+            label_height=label_height,
+            rule=rule,
+        )
+        background_box = (
+            label_left,
+            label_top,
+            label_left + label_width,
+            label_top + label_height,
+        )
+        if rule.label_background_color:
+            draw.rounded_rectangle(
+                background_box,
+                radius=min(max(rule.label_padding * 2, 4), 12),
+                fill=rule.label_background_color,
+            )
+        draw.text(
+            (
+                label_left + rule.label_padding - text_bounds[0],
+                label_top + rule.label_padding - text_bounds[1],
+            ),
+            label,
+            fill=rule.label_color,
+            font=font,
+        )
+
+    def _resolve_overlay_label(self, rule: TransformationRule) -> str | None:
+        if rule.overlay_label:
+            return rule.overlay_label
+        if rule.mode in {TransformationMode.CUSTOM, TransformationMode.GENERIC}:
+            return rule.placeholder
+        return None
+
+    def _label_origin(
+        self,
+        image_size: tuple[int, int],
+        box: tuple[int, int, int, int],
+        *,
+        label_width: int,
+        label_height: int,
+        rule: TransformationRule,
+    ) -> tuple[int, int]:
+        left, top, right, bottom = box
+        if rule.label_position is LabelPosition.TOP_RIGHT:
+            x = right - label_width - rule.label_margin
+            y = top + rule.label_margin
+        elif rule.label_position is LabelPosition.BOTTOM_LEFT:
+            x = left + rule.label_margin
+            y = bottom - label_height - rule.label_margin
+        elif rule.label_position is LabelPosition.BOTTOM_RIGHT:
+            x = right - label_width - rule.label_margin
+            y = bottom - label_height - rule.label_margin
+        elif rule.label_position is LabelPosition.CENTER:
+            x = left + ((right - left - label_width) // 2)
+            y = top + ((bottom - top - label_height) // 2)
+        elif rule.label_position is LabelPosition.OUTSIDE_TOP:
+            x = left + ((right - left - label_width) // 2)
+            y = top - label_height - rule.label_margin
+        elif rule.label_position is LabelPosition.OUTSIDE_BOTTOM:
+            x = left + ((right - left - label_width) // 2)
+            y = bottom + rule.label_margin
+        else:
+            x = left + rule.label_margin
+            y = top + rule.label_margin
+
+        image_width, image_height = image_size
+        x = min(max(x, 0), max(image_width - label_width, 0))
+        y = min(max(y, 0), max(image_height - label_height, 0))
+        return x, y
+
+    def _load_font(self, rule: TransformationRule) -> ImageFont.ImageFont | ImageFont.FreeTypeFont:
+        font_name = {
+            LabelFontFamily.SANS: "DejaVuSans.ttf",
+            LabelFontFamily.SERIF: "DejaVuSerif.ttf",
+            LabelFontFamily.MONO: "DejaVuSansMono.ttf",
+        }[rule.label_font_family]
+        try:
+            return ImageFont.truetype(font_name, rule.label_font_size)
+        except OSError:
+            return ImageFont.load_default()
 
     def _apply_override(
         self,

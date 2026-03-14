@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
@@ -18,6 +19,7 @@ from obsura_api.domain.enums import (
     MatcherKind,
     TransformationMode,
 )
+from obsura_api.domain.pii import PIIDetectionOptions, merge_pii_detection_options
 from obsura_api.domain.studio import PatternMatcherDefinition
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingRecord, ManualTextSpan, TextAnalysisRequest, TextAnalysisResponse
@@ -183,12 +185,14 @@ class TextDetectionService:
             custom_entity_ids,
             configuration_ids,
             default_transformation,
+            pii_detection,
         ) = self.resolve_detection_context(
             content_type=request.content_type,
             pattern_ids=request.pattern_ids,
             custom_entity_ids=request.custom_entity_ids,
             configuration_ids=request.configuration_ids,
             default_transformation=request.default_transformation,
+            pii_detection=request.pii_detection,
         )
         findings = self.build_findings(
             content=request.content,
@@ -199,6 +203,7 @@ class TextDetectionService:
             patterns=patterns,
             entities=entities,
             default_transformation=default_transformation,
+            pii_detection=pii_detection,
         )
 
         job_id: str | None = None
@@ -238,6 +243,7 @@ class TextDetectionService:
         patterns: list[object],
         entities: list[object],
         default_transformation: TransformationRule | None,
+        pii_detection: PIIDetectionOptions | None = None,
     ) -> list[FindingRecord]:
         """Build transient findings for text content without persisting a job."""
 
@@ -248,6 +254,7 @@ class TextDetectionService:
                 self._detect_pii_entities(
                     content,
                     default_transformation,
+                    pii_detection=pii_detection,
                     existing_findings=findings,
                 ),
             )
@@ -319,17 +326,19 @@ class TextDetectionService:
         custom_entity_ids: list[str],
         configuration_ids: list[str],
         default_transformation: TransformationRule | None = None,
-    ) -> tuple[list[object], list[object], TransformationRule | None]:
+        pii_detection: PIIDetectionOptions | None = None,
+    ) -> tuple[list[object], list[object], TransformationRule | None, PIIDetectionOptions | None]:
         """Resolve reusable detection inputs for transient text analysis."""
 
-        patterns, entities, _, _, _, resolved_default = self.resolve_detection_context(
+        patterns, entities, _, _, _, resolved_default, resolved_pii_detection = self.resolve_detection_context(
             content_type=content_type,
             pattern_ids=pattern_ids,
             custom_entity_ids=custom_entity_ids,
             configuration_ids=configuration_ids,
             default_transformation=default_transformation,
+            pii_detection=pii_detection,
         )
-        return patterns, entities, resolved_default
+        return patterns, entities, resolved_default, resolved_pii_detection
 
     def resolve_detection_context(
         self,
@@ -339,6 +348,7 @@ class TextDetectionService:
         custom_entity_ids: list[str],
         configuration_ids: list[str],
         default_transformation: TransformationRule | None,
+        pii_detection: PIIDetectionOptions | None,
     ) -> tuple[
         list[object],
         list[object],
@@ -346,6 +356,7 @@ class TextDetectionService:
         list[str],
         list[str],
         TransformationRule | None,
+        PIIDetectionOptions | None,
     ]:
         configurations = self.studio.resolve_configurations(configuration_ids)
         resolved_pattern_ids = unique_ids(
@@ -366,6 +377,10 @@ class TextDetectionService:
             default_transformation,
             configurations,
         )
+        resolved_pii_detection = self._resolve_pii_detection(
+            pii_detection,
+            configurations,
+        )
         _ = content_type
         return (
             patterns,
@@ -374,6 +389,7 @@ class TextDetectionService:
             resolved_custom_entity_ids,
             unique_ids(configuration_ids),
             resolved_default,
+            resolved_pii_detection,
         )
 
     def _resolve_default_transformation(
@@ -427,13 +443,29 @@ class TextDetectionService:
         text: str,
         default_transformation: TransformationRule | None,
         *,
+        pii_detection: PIIDetectionOptions | None,
         existing_findings: list[FindingRecord],
     ) -> list[FindingRecord]:
         if not self.pii_detector.supported:
             return []
 
         findings: list[FindingRecord] = []
-        for entity in self.pii_detector.detect_entities(text):
+        detector_language = pii_detection.language if pii_detection is not None else None
+        detector_entities = pii_detection.entity_allow_list if pii_detection is not None else None
+        detector_context = pii_detection.context_words if pii_detection is not None else None
+        try:
+            detected_entities = self.pii_detector.detect_entities(
+                text,
+                language=detector_language,
+                entity_allow_list=detector_entities,
+                context_words=detector_context,
+            )
+        except TypeError:
+            detected_entities = self.pii_detector.detect_entities(text)
+        except ValueError as exc:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+        for entity in detected_entities:
             if self._overlaps_existing_span(entity, existing_findings):
                 continue
             findings.append(
@@ -453,6 +485,44 @@ class TextDetectionService:
                 ),
             )
         return findings
+
+    def _resolve_pii_detection(
+        self,
+        request_pii_detection: PIIDetectionOptions | None,
+        configurations: list[object],
+    ) -> PIIDetectionOptions | None:
+        configuration_options = [
+            self._configuration_pii_detection(configuration)
+            for configuration in configurations
+        ]
+        resolved = merge_pii_detection_options(*configuration_options, request_pii_detection)
+        if resolved is None:
+            return None
+
+        supported_languages = tuple(getattr(self.pii_detector, "supported_languages", ()) or ())
+        if resolved.language and supported_languages and resolved.language not in supported_languages:
+            supported = ", ".join(supported_languages)
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Unsupported PII language `{resolved.language}` for this deployment. "
+                    f"Supported languages: {supported}"
+                ),
+            )
+        return resolved
+
+    def _configuration_pii_detection(self, configuration: object) -> PIIDetectionOptions | None:
+        raw_value = getattr(configuration, "extra_data", {}).get("pii_detection")
+        if raw_value is None:
+            return None
+        try:
+            return PIIDetectionOptions.model_validate(raw_value)
+        except ValidationError as exc:
+            configuration_name = getattr(configuration, "name", getattr(configuration, "id", "configuration"))
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Configuration `{configuration_name}` has invalid `pii_detection` settings",
+            ) from exc
 
     def _detect_matcher(
         self,

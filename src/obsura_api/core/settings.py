@@ -93,6 +93,27 @@ class Settings(BaseSettings):
             "OBSURA_PII_SCORE_THRESHOLD",
         ),
     )
+    presidio_supported_languages: Annotated[tuple[str, ...], NoDecode] = Field(
+        default=(),
+        validation_alias=AliasChoices(
+            "OBSURA_PRESIDIO_SUPPORTED_LANGUAGES",
+            "OBSURA_PII_SUPPORTED_LANGUAGES",
+        ),
+    )
+    presidio_model_map: Annotated[dict[str, str], NoDecode] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices(
+            "OBSURA_PRESIDIO_MODEL_MAP",
+            "OBSURA_PII_MODEL_MAP",
+        ),
+    )
+    presidio_recognizers_path: Path | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "OBSURA_PRESIDIO_RECOGNIZERS_PATH",
+            "OBSURA_PII_RECOGNIZERS_PATH",
+        ),
+    )
     storage_root: Path = Field(default=Path("storage"))
     media_mount_path: str = "/media"
     auto_create_schema: bool = False
@@ -193,6 +214,97 @@ class Settings(BaseSettings):
 
         return value
 
+    @field_validator("presidio_supported_languages", mode="before")
+    @classmethod
+    def parse_presidio_supported_languages(cls, value: Any) -> Any:
+        if value is None:
+            return ()
+
+        if isinstance(value, str):
+            raw_value = value.strip()
+            if not raw_value:
+                return ()
+            if raw_value.startswith("["):
+                try:
+                    value = json.loads(raw_value)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        "Presidio supported languages must be a JSON array or comma-separated string.",
+                    ) from exc
+            else:
+                value = raw_value.split(",")
+
+        if isinstance(value, (list, tuple, set)):
+            normalized: list[str] = []
+            for item in value:
+                if not isinstance(item, str):
+                    raise ValueError("Presidio supported languages entries must be strings.")
+                language = item.strip().lower()
+                if not language or language in normalized:
+                    continue
+                normalized.append(language)
+            return tuple(normalized)
+
+        return value
+
+    @field_validator("presidio_model_map", mode="before")
+    @classmethod
+    def parse_presidio_model_map(cls, value: Any) -> Any:
+        if value is None or value == "":
+            return {}
+
+        if isinstance(value, str):
+            raw_value = value.strip()
+            if not raw_value:
+                return {}
+            if raw_value.startswith("{"):
+                try:
+                    value = json.loads(raw_value)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        "Presidio model map must be a JSON object or comma-separated lang=model pairs.",
+                    ) from exc
+            else:
+                parsed: dict[str, str] = {}
+                for item in raw_value.split(","):
+                    if "=" not in item:
+                        raise ValueError(
+                            "Presidio model map entries must use the `lang=model_name` format.",
+                        )
+                    language, model_name = item.split("=", 1)
+                    normalized_language = language.strip().lower()
+                    normalized_model = model_name.strip()
+                    if not normalized_language or not normalized_model:
+                        raise ValueError("Presidio model map entries must include both language and model.")
+                    parsed[normalized_language] = normalized_model
+                return parsed
+
+        if isinstance(value, dict):
+            normalized: dict[str, str] = {}
+            for language, model_name in value.items():
+                if not isinstance(language, str) or not isinstance(model_name, str):
+                    raise ValueError("Presidio model map keys and values must be strings.")
+                normalized_language = language.strip().lower()
+                normalized_model = model_name.strip()
+                if not normalized_language or not normalized_model:
+                    raise ValueError("Presidio model map entries must not be blank.")
+                normalized[normalized_language] = normalized_model
+            return normalized
+
+        return value
+
+    @field_validator("presidio_recognizers_path", mode="before")
+    @classmethod
+    def parse_presidio_recognizers_path(cls, value: Any) -> Any:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                return None
+            return Path(normalized)
+        return value
+
     @model_validator(mode="after")
     def resolve_database_url(self) -> "Settings":
         raw_database_url = self.database_url.strip()
@@ -226,6 +338,34 @@ class Settings(BaseSettings):
                 "OBSURA_CORS_ALLOWED_ORIGINS must not include '*' when "
                 "OBSURA_CORS_ALLOW_CREDENTIALS=true.",
             )
+
+        normalized_pii_language = self.pii_language.strip().lower()
+        self.pii_language = normalized_pii_language
+        if self.presidio_recognizers_path is not None:
+            self.presidio_recognizers_path = self.presidio_recognizers_path.expanduser()
+
+        normalized_languages = list(self.presidio_supported_languages)
+        if normalized_pii_language and normalized_pii_language not in normalized_languages:
+            normalized_languages.insert(0, normalized_pii_language)
+        self.presidio_supported_languages = tuple(normalized_languages)
+
+        normalized_model_map = dict(self.presidio_model_map)
+        if normalized_pii_language and self.presidio_model and normalized_pii_language not in normalized_model_map:
+            normalized_model_map[normalized_pii_language] = self.presidio_model.strip()
+        self.presidio_model_map = normalized_model_map
+
+        if self.pii_backend.strip().lower() in {"presidio", "presidio_analyzer"}:
+            missing_languages = [
+                language
+                for language in self.presidio_supported_languages
+                if language not in self.presidio_model_map
+            ]
+            if missing_languages:
+                missing = ", ".join(missing_languages)
+                raise ValueError(
+                    "Presidio requires a spaCy model for each configured language. "
+                    f"Missing model mapping for: {missing}",
+                )
 
         self.database_url = parsed_url.render_as_string(hide_password=False)
         return self

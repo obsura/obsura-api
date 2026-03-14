@@ -73,6 +73,42 @@ def test_image_region_transformation_persists_output(client) -> None:
     assert not list(client.app.state.container.settings.storage_root.rglob("*.png"))
 
 
+def test_image_region_defaults_to_blur_without_explicit_transformation(client) -> None:
+    image = Image.new("RGB", (20, 20), color="white")
+    for x in range(10):
+        for y in range(20):
+            image.putpixel((x, y), (0, 0, 0))
+
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+
+    response = client.post(
+        "/api/v1/workflows/images/transform",
+        files={"file": ("default-blur.png", buffer.getvalue(), "image/png")},
+        data={
+            "manifest_json": json.dumps(
+                {
+                    "regions": [
+                        {
+                            "kind": "image_region",
+                            "source": "manual",
+                            "entity_type": "SECRET_REGION",
+                            "entity_name": "Secret block",
+                            "region": {"x": 6, "y": 0, "width": 8, "height": 20},
+                        }
+                    ]
+                }
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    transformed = _open_stored_image(client, response.json()["data"]["stored_output_path"])
+    boundary_pixel = transformed.getpixel((9, 10))
+    assert boundary_pixel != (0, 0, 0)
+    assert boundary_pixel != (255, 255, 255)
+
+
 def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
     image = Image.new("RGB", (20, 20), color="white")
     buffer = BytesIO()
@@ -142,6 +178,56 @@ def test_reviewed_image_job_transform_uses_persisted_findings(client) -> None:
         transform_with_review.json()["data"]["stored_output_path"],
     )
     assert transformed.getpixel((5, 5)) != (255, 255, 255)
+
+
+def test_image_transform_supports_padding_border_and_label_options(client) -> None:
+    image = Image.new("RGB", (30, 30), color="white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+
+    response = client.post(
+        "/api/v1/workflows/images/transform",
+        files={"file": ("styled.png", buffer.getvalue(), "image/png")},
+        data={
+            "manifest_json": json.dumps(
+                {
+                    "regions": [
+                        {
+                            "kind": "image_region",
+                            "source": "manual",
+                            "entity_type": "SECRET_REGION",
+                            "entity_name": "Secret block",
+                            "region": {"x": 10, "y": 10, "width": 8, "height": 8},
+                            "transformation": {
+                                "mode": "overlay",
+                                "overlay_color": "#000000",
+                                "overlay_label": "HIDDEN",
+                                "overlay_shape": "rectangle",
+                                "region_padding": 4,
+                                "outline_color": "#ff0000",
+                                "outline_width": 2,
+                                "label_background_color": "#000000",
+                                "label_color": "#ffffff",
+                                "label_position": "outside_bottom",
+                                "label_font_family": "mono",
+                                "label_font_size": 18,
+                            },
+                        }
+                    ]
+                }
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    transformed = _open_stored_image(client, response.json()["data"]["stored_output_path"])
+    left_border_pixels = {
+        transformed.getpixel((x, y))
+        for x in range(6, 9)
+        for y in range(8, 19)
+    }
+    assert (255, 0, 0) in left_border_pixels
+    assert transformed.getpixel((12, 12)) == (0, 0, 0)
 
 
 def test_screenshot_ocr_analysis_uses_saved_patterns(client) -> None:

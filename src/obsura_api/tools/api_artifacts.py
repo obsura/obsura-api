@@ -121,12 +121,20 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             "mode": "blur",
             "blur_radius": 10,
         },
+        "pii_detection": {
+            "language": "en",
+            "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS", "PERSON"],
+            "context_words": ["customer", "email", "server"],
+        },
         "face_preferences": {"mode": "blur", "blur_radius": 12},
         "metadata": {"team": "platform"},
     },
     ("PATCH", "/api/v1/studio/configurations/{configuration_id}"): {
         "description": "Updated preset description.",
         "tags": ["ops", "updated"],
+        "pii_detection": {
+            "context_words": ["customer", "contact", "email"],
+        },
         "metadata": {"team": "platform", "status": "reviewed"},
     },
     ("POST", "/api/v1/jobs/{job_id}/review"): {
@@ -148,8 +156,13 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
         "pattern_ids": ["{{patternId}}"],
         "custom_entity_ids": ["{{entityId}}"],
         "configuration_ids": ["{{configurationId}}"],
+        "pii_detection": {
+            "language": "en",
+            "entity_allow_list": ["EMAIL_ADDRESS", "URL"],
+            "context_words": ["login", "customer", "contact"],
+        },
         "exact_values": ["root", "admin"],
-        "persist_source_content": True,
+        "persist_source_content": False,
         "items": [
             {
                 "client_item_id": "snippet-1",
@@ -206,6 +219,11 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
         "pattern_ids": ["{{patternId}}"],
         "custom_entity_ids": ["{{entityId}}"],
         "configuration_ids": ["{{configurationId}}"],
+        "pii_detection": {
+            "language": "en",
+            "entity_allow_list": ["EMAIL_ADDRESS", "URL", "IP_ADDRESS"],
+            "context_words": ["customer", "support", "server"],
+        },
         "exact_values": ["root"],
         "manual_spans": [],
         "default_transformation": {
@@ -213,10 +231,11 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             "semantic_label": "SENSITIVE_VALUE",
         },
         "persist_job": True,
-        "persist_source_content": True,
+        "persist_source_content": False,
     },
     ("POST", "/api/v1/workflows/text/transform"): {
         "job_id": "{{jobId}}",
+        "content": "Connect to https://internal.example.com from 10.0.0.1 as root",
         "finding_overrides": [
             {
                 "finding_id": "{{findingId}}",
@@ -249,9 +268,11 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
                 "finding_id": "{{findingId}}",
                 "decision": "approved",
                 "transformation": {
-                    "mode": "mask",
-                    "overlay_color": "#111111",
-                    "overlay_label": "REDACTED",
+                    "mode": "blur",
+                    "blur_radius": 12,
+                    "region_padding": 6,
+                    "outline_color": "#ff4d4f",
+                    "outline_width": 2,
                 },
             }
         ],
@@ -269,6 +290,11 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 "configuration_ids": ["{{configurationId}}"],
                 "pattern_ids": ["{{patternId}}"],
                 "custom_entity_ids": ["{{entityId}}"],
+                "pii_detection": {
+                    "language": "en",
+                    "entity_allow_list": ["PERSON", "EMAIL_ADDRESS"],
+                    "context_words": ["customer", "email", "contact"],
+                },
                 "apply_builtins": True,
                 "detect_text": True,
                 "regions": [
@@ -295,6 +321,11 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 "configuration_ids": ["{{configurationId}}"],
                 "pattern_ids": ["{{patternId}}"],
                 "custom_entity_ids": ["{{entityId}}"],
+                "pii_detection": {
+                    "language": "en",
+                    "entity_allow_list": ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+                    "context_words": ["customer", "contact", "support"],
+                },
                 "apply_builtins": True,
                 "detect_text": True,
                 "regions": [
@@ -305,9 +336,18 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                         "entity_name": "API key panel",
                         "region": {"x": 48, "y": 24, "width": 240, "height": 96},
                         "transformation": {
-                            "mode": "mask",
+                            "mode": "overlay",
                             "overlay_color": "#111111",
                             "overlay_label": "REDACTED",
+                            "overlay_shape": "rounded_rectangle",
+                            "overlay_corner_radius": 12,
+                            "region_padding": 8,
+                            "outline_color": "#f97316",
+                            "outline_width": 2,
+                            "label_position": "outside_bottom",
+                            "label_font_family": "mono",
+                            "label_font_size": 18,
+                            "label_background_color": "#111111",
                         },
                     }
                 ],

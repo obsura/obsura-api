@@ -145,6 +145,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     logger.info("Using `%s` OCR backend", ocr_provider.name)
     logger.info("Using `%s` face detector backend", face_detector.name)
     logger.info("Using `%s` PII detector backend", pii_detector.name)
+    if getattr(pii_detector, "supported_languages", ()):
+        logger.info(
+            "PII detector languages: %s (custom recognizers: %s)",
+            ", ".join(getattr(pii_detector, "supported_languages", ())),
+            bool(getattr(pii_detector, "custom_recognizers_configured", False)),
+        )
     logger.info(
         "Sensitive data scrub completed: %s jobs, %s outputs, %s findings, %s disk files",
         scrub_counts["jobs"],

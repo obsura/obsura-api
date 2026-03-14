@@ -71,6 +71,10 @@ def version(settings: SettingsDep, container: ContainerDep) -> ApiResponse[Servi
             ocr_backend=container.ocr_provider.name,
             face_detector_backend=container.face_detector.name,
             pii_backend=container.pii_detector.name,
+            pii_languages=list(getattr(container.pii_detector, "supported_languages", ()) or ()),
+            pii_custom_recognizers=bool(
+                getattr(container.pii_detector, "custom_recognizers_configured", False),
+            ),
             ocr_available=container.ocr_provider.supported,
             face_detection_available=container.face_detector.supported,
             pii_available=container.pii_detector.supported,

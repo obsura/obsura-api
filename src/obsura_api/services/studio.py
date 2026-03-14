@@ -133,9 +133,16 @@ class StudioService:
             custom_entity_ids=payload.custom_entity_ids,
         )
         data = payload.model_dump()
+        extra_data = dict(data["metadata"])
+        if data.get("pii_detection") is not None:
+            extra_data["pii_detection"] = data["pii_detection"]
         configuration = StudioConfiguration(
-            **{key: value for key, value in data.items() if key != "metadata"},
-            extra_data=data["metadata"],
+            **{
+                key: value
+                for key, value in data.items()
+                if key not in {"metadata", "pii_detection"}
+            },
+            extra_data=extra_data,
         )
         self.session.add(configuration)
         self.session.commit()
@@ -179,7 +186,16 @@ class StudioService:
         )
         for field_name, value in updates.items():
             if field_name == "metadata":
-                configuration.extra_data = value
+                existing_pii_detection = configuration.extra_data.get("pii_detection")
+                configuration.extra_data = dict(value)
+                if existing_pii_detection is not None:
+                    configuration.extra_data["pii_detection"] = existing_pii_detection
+            elif field_name == "pii_detection":
+                configuration.extra_data = dict(configuration.extra_data)
+                if value is None:
+                    configuration.extra_data.pop("pii_detection", None)
+                else:
+                    configuration.extra_data["pii_detection"] = value
             else:
                 setattr(configuration, field_name, value)
         self.session.commit()
@@ -209,6 +225,8 @@ class StudioService:
         return self._ordered_entities(configuration_ids, rows, "Configuration")
 
     def _configuration_to_schema(self, configuration: StudioConfiguration) -> ConfigurationRead:
+        metadata = dict(configuration.extra_data)
+        pii_detection = metadata.pop("pii_detection", None)
         return ConfigurationRead(
             id=configuration.id,
             created_at=configuration.created_at,
@@ -223,8 +241,9 @@ class StudioService:
             custom_entity_ids=configuration.custom_entity_ids,
             default_text_transformation=configuration.default_text_transformation,
             default_image_transformation=configuration.default_image_transformation,
+            pii_detection=pii_detection,
             face_preferences=configuration.face_preferences,
-            metadata=configuration.extra_data,
+            metadata=metadata,
         )
 
     def _validate_configuration_references(

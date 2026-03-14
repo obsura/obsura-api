@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from obsura_api.domain.common import BoundingBox, UuidReference
 from obsura_api.domain.enums import ContentType, FindingKind, FindingSource, ReviewDecision
+from obsura_api.domain.pii import PIIDetectionOptions
 from obsura_api.domain.transforms import TransformationRule
 
 
@@ -59,6 +60,7 @@ class TextAnalysisRequest(BaseModel):
     pattern_ids: list[UuidReference] = Field(default_factory=list)
     custom_entity_ids: list[UuidReference] = Field(default_factory=list)
     configuration_ids: list[UuidReference] = Field(default_factory=list)
+    pii_detection: PIIDetectionOptions | None = None
     exact_values: list[str] = Field(default_factory=list)
     manual_spans: list[ManualTextSpan] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
@@ -174,6 +176,7 @@ class ImageWorkflowManifest(BaseModel):
     configuration_ids: list[UuidReference] = Field(default_factory=list)
     pattern_ids: list[UuidReference] = Field(default_factory=list)
     custom_entity_ids: list[UuidReference] = Field(default_factory=list)
+    pii_detection: PIIDetectionOptions | None = None
     exact_values: list[str] = Field(default_factory=list)
     apply_builtins: bool = True
     regions: list[ImageRegionInput] = Field(default_factory=list)

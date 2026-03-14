@@ -37,6 +37,28 @@ class TransformationMode(str, Enum):
     IMAGE_REPLACEMENT = "image_replacement"
 
 
+class OverlayShape(str, Enum):
+    RECTANGLE = "rectangle"
+    ROUNDED_RECTANGLE = "rounded_rectangle"
+    ELLIPSE = "ellipse"
+
+
+class LabelPosition(str, Enum):
+    TOP_LEFT = "top_left"
+    TOP_RIGHT = "top_right"
+    BOTTOM_LEFT = "bottom_left"
+    BOTTOM_RIGHT = "bottom_right"
+    CENTER = "center"
+    OUTSIDE_TOP = "outside_top"
+    OUTSIDE_BOTTOM = "outside_bottom"
+
+
+class LabelFontFamily(str, Enum):
+    SANS = "sans"
+    SERIF = "serif"
+    MONO = "mono"
+
+
 class FindingSource(str, Enum):
     BUILT_IN = "built_in"
     CUSTOM = "custom"

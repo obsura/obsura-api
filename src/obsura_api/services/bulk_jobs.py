@@ -211,12 +211,14 @@ class BulkJobService:
             resolved_custom_entity_ids,
             resolved_configuration_ids,
             resolved_default_transformation,
+            resolved_pii_detection,
         ) = self.text_detection.resolve_detection_context(
             content_type=payload.content_type,
             pattern_ids=payload.pattern_ids,
             custom_entity_ids=payload.custom_entity_ids,
             configuration_ids=payload.configuration_ids,
             default_transformation=payload.default_transformation,
+            pii_detection=payload.pii_detection,
         )
 
         bulk_job = BulkJob(
@@ -255,6 +257,7 @@ class BulkJobService:
                     patterns=patterns,
                     entities=entities,
                     default_transformation=resolved_default_transformation,
+                    pii_detection=resolved_pii_detection,
                 )
                 summary = {
                     **empty_item_summary(),

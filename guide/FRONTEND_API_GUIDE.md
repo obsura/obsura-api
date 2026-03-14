@@ -23,6 +23,8 @@ Frontend expectation:
 
 - use `/api/v1/ready` before treating the backend as fully available
 - use `/api/v1/version` for diagnostics, environment display, and operator UI
+- use `/api/v1/version` to discover active `pii_languages` and whether
+  `pii_custom_recognizers` are configured
 - do not use `/api/v1/health` as a full readiness signal
 - local development CORS allows `http://127.0.0.1:3000` and
   `http://localhost:3000` by default
@@ -152,6 +154,10 @@ Frontend guidance:
 
 - treat `analyze` -> `review` -> `transform` as the primary UX flow
 - treat `analyze-transform` as a convenience path, not the main review-first UI
+- when transforming a persisted text job, resend `content`; raw source text is not
+  retained by the backend
+- use `pii_detection` when the operator needs language, entity scope, or context
+  tuning for Presidio-backed detection
 
 ### Image Workflows
 
@@ -166,6 +172,10 @@ Frontend guidance:
 - these endpoints use `multipart/form-data`
 - `manifest_json` is a JSON string field, not a nested JSON body
 - for review-first UI, prefer `analyze` -> job review -> `transform-job`
+- default image anonymization is `blur` when no explicit image transformation is
+  provided
+- OCR-driven text detection inside images accepts the same `pii_detection` object
+  as text workflows
 
 ### Bulk Text Workflows
 
@@ -183,6 +193,8 @@ Stable frontend meaning:
 - child text jobs are created for valid submitted items
 - per-item outcomes are explicit and can partially fail
 - ordering is deterministic and follows submitted item order
+- bulk analyze accepts one shared `pii_detection` object applied to every item in
+  the submission
 
 ## 5. Review-First Product Rule
 
@@ -248,8 +260,94 @@ Frontend rules:
 - do not assume they are directly fetchable URLs
 - when `media_url` is present, use `media_url` for browser display
 - treat storage-relative references as backend-managed identifiers
+- source image references are intentionally not exposed back to the frontend
+- generated image outputs are short-lived backend-managed artifacts, not durable
+  files
 
-## 8. Recommended Frontend Client Structure
+## 8. PII Detection Tuning
+
+Presidio-backed workflows now accept a typed `pii_detection` object.
+
+Supported fields:
+
+- `language`
+- `entity_allow_list`
+- `context_words`
+
+Where it can be used:
+
+- `POST /api/v1/workflows/text/analyze`
+- `POST /api/v1/workflows/text/analyze-transform`
+- `POST /api/v1/workflows/images/analyze` inside `manifest_json`
+- `POST /api/v1/workflows/images/transform` inside `manifest_json`
+- `POST /api/v1/bulk/text/analyze`
+- `POST /api/v1/studio/configurations` and `PATCH /api/v1/studio/configurations/{configuration_id}`
+
+Frontend rules:
+
+- treat `language` as a deployment-bound choice; validate against
+  `/api/v1/version`
+- use `entity_allow_list` to narrow detection, not to broaden access beyond admin
+  presets
+- use `context_words` to improve ambiguous detection such as names, IDs, or
+  medical/account fields
+- configuration-level `pii_detection` acts as a saved preset; request-level
+  `pii_detection` adds or narrows behavior at runtime
+
+Example:
+
+```json
+{
+  "pii_detection": {
+    "language": "es",
+    "entity_allow_list": ["EMAIL_ADDRESS", "PERSON"],
+    "context_words": ["correo", "cliente", "contacto"]
+  }
+}
+```
+
+## 9. Transformation Customization
+
+The frontend can control anonymization style per finding or as a workflow default.
+
+Text-focused fields:
+
+- `mode`
+- `placeholder`
+- `mask_character`
+- `prefix_visible`
+- `suffix_visible`
+- `semantic_label`
+- `alias_prefix`
+
+Image-focused fields:
+
+- `mode`
+- `blur_radius`
+- `pixelation_scale`
+- `region_padding`
+- `overlay_shape`
+- `overlay_corner_radius`
+- `overlay_color`
+- `outline_color`
+- `outline_width`
+- `overlay_label`
+- `label_position`
+- `label_font_family`
+- `label_font_size`
+- `label_color`
+- `label_background_color`
+- `label_padding`
+- `label_margin`
+
+Stable defaults:
+
+- text default remains generic redaction, returning `[REDACTED]`
+- image default is now `blur`
+- image overlays do not render label text unless the frontend explicitly sends
+  `overlay_label` or a placeholder-based mode
+
+## 10. Recommended Frontend Client Structure
 
 Use one typed API client layer with resource grouping similar to the backend:
 
@@ -278,7 +376,7 @@ Recommended type groups:
 - image workflow request/response types
 - bulk request/response types
 
-## 9. Recommended UI Flows
+## 11. Recommended UI Flows
 
 ### Single Text Flow
 
@@ -305,7 +403,7 @@ Recommended type groups:
 5. submit `POST /api/v1/bulk/text/transform`
 6. render per-item transform outcomes explicitly
 
-## 10. Known Limits the Frontend Must Respect
+## 12. Known Limits the Frontend Must Respect
 
 Current runtime limits can be configured, but frontend should assume these exist:
 
@@ -321,7 +419,7 @@ Frontend guidance:
 - still rely on server validation as the source of truth
 - surface server error messages directly in admin/operator UI
 
-## 11. Postman and OpenAPI Usage
+## 13. Postman and OpenAPI Usage
 
 Available integration artifacts:
 
@@ -340,7 +438,7 @@ The Postman collection already supports:
 - bulk run capture
 - review-first flow testing
 
-## 12. What Is Stable Enough To Build Against
+## 14. What Is Stable Enough To Build Against
 
 Frontend can confidently build against:
 
@@ -354,7 +452,7 @@ Frontend can confidently build against:
 - readiness/version endpoints
 - storage-relative file reference semantics
 
-## 13. What Is Intentionally Deferred
+## 15. What Is Intentionally Deferred
 
 Do not design frontend dependencies on these yet:
 
@@ -365,7 +463,7 @@ Do not design frontend dependencies on these yet:
 - background job orchestration
 - export/reporting systems
 
-## 14. Practical Integration Checklist
+## 16. Practical Integration Checklist
 
 Before frontend integration starts:
 

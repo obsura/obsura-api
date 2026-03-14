@@ -3122,6 +3122,16 @@
             "type": "array",
             "title": "Configuration Ids"
           },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "exact_values": {
             "items": {
               "type": "string"
@@ -3513,6 +3523,16 @@
               }
             ]
           },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "face_preferences": {
             "additionalProperties": {
               "anyOf": [
@@ -3647,6 +3667,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
               },
               {
                 "type": "null"
@@ -3824,6 +3854,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
               },
               {
                 "type": "null"
@@ -4822,6 +4862,28 @@
         ],
         "title": "JobStatus"
       },
+      "LabelFontFamily": {
+        "type": "string",
+        "enum": [
+          "sans",
+          "serif",
+          "mono"
+        ],
+        "title": "LabelFontFamily"
+      },
+      "LabelPosition": {
+        "type": "string",
+        "enum": [
+          "top_left",
+          "top_right",
+          "bottom_left",
+          "bottom_right",
+          "center",
+          "outside_top",
+          "outside_bottom"
+        ],
+        "title": "LabelPosition"
+      },
       "ManualTextSpan": {
         "properties": {
           "start_index": {
@@ -4878,6 +4940,50 @@
           "value_list"
         ],
         "title": "MatcherKind"
+      },
+      "OverlayShape": {
+        "type": "string",
+        "enum": [
+          "rectangle",
+          "rounded_rectangle",
+          "ellipse"
+        ],
+        "title": "OverlayShape"
+      },
+      "PIIDetectionOptions": {
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "entity_allow_list": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Allow List"
+          },
+          "context_words": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Context Words"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PIIDetectionOptions",
+        "description": "Per-request or per-configuration PII detection tuning."
       },
       "PaginationMeta": {
         "properties": {
@@ -5453,6 +5559,17 @@
             "type": "string",
             "title": "Pii Backend"
           },
+          "pii_languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pii Languages"
+          },
+          "pii_custom_recognizers": {
+            "type": "boolean",
+            "title": "Pii Custom Recognizers"
+          },
           "ocr_available": {
             "type": "boolean",
             "title": "Ocr Available"
@@ -5477,6 +5594,8 @@
           "ocr_backend",
           "face_detector_backend",
           "pii_backend",
+          "pii_languages",
+          "pii_custom_recognizers",
           "ocr_available",
           "face_detection_available",
           "pii_available"
@@ -5534,6 +5653,16 @@
             },
             "type": "array",
             "title": "Configuration Ids"
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "exact_values": {
             "items": {
@@ -5818,6 +5947,82 @@
               }
             ],
             "title": "Overlay Label"
+          },
+          "region_padding": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Region Padding",
+            "default": 0
+          },
+          "overlay_shape": {
+            "$ref": "#/components/schemas/OverlayShape",
+            "default": "rectangle"
+          },
+          "overlay_corner_radius": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Overlay Corner Radius",
+            "default": 12
+          },
+          "outline_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outline Color"
+          },
+          "outline_width": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Outline Width",
+            "default": 0
+          },
+          "label_color": {
+            "type": "string",
+            "title": "Label Color",
+            "default": "#FFFFFF"
+          },
+          "label_background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label Background Color"
+          },
+          "label_position": {
+            "$ref": "#/components/schemas/LabelPosition",
+            "default": "top_left"
+          },
+          "label_font_family": {
+            "$ref": "#/components/schemas/LabelFontFamily",
+            "default": "sans"
+          },
+          "label_font_size": {
+            "type": "integer",
+            "maximum": 96.0,
+            "minimum": 8.0,
+            "title": "Label Font Size",
+            "default": 14
+          },
+          "label_padding": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Label Padding",
+            "default": 4
+          },
+          "label_margin": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Label Margin",
+            "default": 4
           }
         },
         "additionalProperties": false,
