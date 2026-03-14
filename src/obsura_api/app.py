@@ -27,6 +27,7 @@ from obsura_api.db.session import (
     ensure_database_schema,
     verify_database_connection,
 )
+from obsura_api.domain.operational import ServiceRootInfo
 from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import build_ocr_provider
 from obsura_api.services.storage import StorageService
@@ -158,17 +159,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
 
-    @app.get("/", include_in_schema=False)
-    @app.get("/api", include_in_schema=False)
-    def api_root(request: Request) -> dict[str, str | None]:
+    @app.get("/", include_in_schema=False, response_model=ServiceRootInfo)
+    @app.get("/api", include_in_schema=False, response_model=ServiceRootInfo)
+    def api_root(request: Request) -> ServiceRootInfo:
         public_base_url = _public_base_url(request)
-        return {
-            "name": settings.app_name,
-            "status": "ok",
-            "docs_url": _public_url(public_base_url, app.docs_url),
-            "openapi_url": _public_url(public_base_url, app.openapi_url),
-            "version": f"v{__version__}",
-        }
+        return ServiceRootInfo(
+            name=settings.app_name,
+            status="ok",
+            docs_url=_public_url(public_base_url, app.docs_url),
+            openapi_url=_public_url(public_base_url, app.openapi_url),
+            version=f"v{__version__}",
+            ocr_available=ocr_provider.supported,
+            face_detection_available=face_detector.supported,
+        )
 
     app.state.container = AppContainer(
         settings=settings,

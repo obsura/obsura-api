@@ -12,9 +12,9 @@ from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings
 from obsura_api.db.migrations import describe_schema_mismatch, get_schema_state
 from obsura_api.db.session import verify_database_connection
-
 from obsura_api.api.responses import success_response
 from obsura_api.domain.common import ApiResponse
+from obsura_api.domain.operational import ServiceVersionInfo
 
 router = APIRouter(tags=["health"])
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -55,20 +55,22 @@ def readiness(
     )
 
 
-@router.get("/version", response_model=ApiResponse[dict[str, str]])
-def version(settings: SettingsDep, container: ContainerDep) -> ApiResponse[dict[str, str]]:
+@router.get("/version", response_model=ApiResponse[ServiceVersionInfo])
+def version(settings: SettingsDep, container: ContainerDep) -> ApiResponse[ServiceVersionInfo]:
     """Return service version and runtime metadata."""
 
     schema_state = get_schema_state(container.engine, settings.database_url)
     return success_response(
-        {
-            "name": settings.app_name,
-            "version": __version__,
-            "environment": settings.normalized_environment,
-            "database_backend": settings.database_backend_summary,
-            "schema_revision": schema_state.current_revision or "uninitialized",
-            "schema_head": schema_state.expected_revision,
-            "ocr_backend": container.ocr_provider.name,
-            "face_detector_backend": container.face_detector.name,
-        }
+        ServiceVersionInfo(
+            name=settings.app_name,
+            version=__version__,
+            environment=settings.normalized_environment,
+            database_backend=settings.database_backend_summary,
+            schema_revision=schema_state.current_revision or "uninitialized",
+            schema_head=schema_state.expected_revision,
+            ocr_backend=container.ocr_provider.name,
+            face_detector_backend=container.face_detector.name,
+            ocr_available=container.ocr_provider.supported,
+            face_detection_available=container.face_detector.supported,
+        ),
     )
