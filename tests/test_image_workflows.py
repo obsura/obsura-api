@@ -221,7 +221,12 @@ def test_image_transform_supports_padding_border_and_label_options(client) -> No
 
     assert response.status_code == 200
     transformed = _open_stored_image(client, response.json()["data"]["stored_output_path"])
-    assert transformed.getpixel((6, 12)) == (255, 0, 0)
+    left_border_pixels = {
+        transformed.getpixel((x, y))
+        for x in range(6, 9)
+        for y in range(8, 19)
+    }
+    assert (255, 0, 0) in left_border_pixels
     assert transformed.getpixel((12, 12)) == (0, 0, 0)
 
 

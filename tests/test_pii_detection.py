@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
+from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -68,7 +69,7 @@ def test_build_pii_detector_uses_configured_backend(monkeypatch) -> None:
     assert detector.score_threshold == 0.42
     assert detector.supported_languages == ("en", "es")
     assert detector.model_map["es"] == "es_core_news_sm"
-    assert str(detector.recognizers_path).endswith("config\\presidio.yml")
+    assert Path(detector.recognizers_path).parts[-2:] == ("config", "presidio.yml")
 
 
 def test_build_pii_detector_rejects_unknown_backend() -> None:
