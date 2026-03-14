@@ -15,7 +15,6 @@ from sqlalchemy.engine import Engine
 
 from obsura_api.core.settings import Settings
 
-
 ALEMBIC_SCRIPT_LOCATION = Path(__file__).resolve().parent / "alembic"
 
 

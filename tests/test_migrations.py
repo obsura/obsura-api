@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy import text
-
 import pytest
+from sqlalchemy import text
 
 from obsura_api.core.settings import Settings
 from obsura_api.db import session as session_module
@@ -13,8 +12,10 @@ def test_create_alembic_config_uses_packaged_scripts() -> None:
     config = create_alembic_config("sqlite:///./example.db")
 
     assert config.get_main_option("sqlalchemy.url") == "sqlite:///./example.db"
-    assert config.get_main_option("script_location").replace("\\", "/").endswith(
-        "src/obsura_api/db/alembic"
+    assert (
+        config.get_main_option("script_location")
+        .replace("\\", "/")
+        .endswith("src/obsura_api/db/alembic")
     )
     assert get_head_revision("sqlite:///./example.db") == "c4b7d2e8a193"
 
@@ -51,9 +52,7 @@ def test_bulk_job_tables_exist_after_upgrade(tmp_path) -> None:
     with engine.connect() as connection:
         table_names = {
             row[0]
-            for row in connection.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table'")
-            )
+            for row in connection.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
         }
 
     assert "bulk_jobs" in table_names

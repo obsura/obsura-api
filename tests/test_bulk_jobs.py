@@ -229,9 +229,7 @@ def test_bulk_text_analyze_rejects_limit_violations(tmp_path: Path) -> None:
 
         too_large = custom_client.post(
             "/api/v1/bulk/text/analyze",
-            json={
-                "items": [{"client_item_id": "one", "content": "abcdef"}]
-            },
+            json={"items": [{"client_item_id": "one", "content": "abcdef"}]},
         )
         assert too_large.status_code == 422
         too_large_body = too_large.json()
@@ -494,7 +492,10 @@ def test_bulk_transform_supports_partial_failures_for_incomplete_items(client) -
     assert data["items"][0]["operation_status"] == "succeeded"
     assert data["items"][0]["bulk_item_status"] == "transformed"
     assert data["items"][1]["operation_status"] == "failed"
-    assert data["items"][1]["error"] == "Job does not retain source text; resubmit content to transform it"
+    assert (
+        data["items"][1]["error"]
+        == "Job does not retain source text; resubmit content to transform it"
+    )
     assert data["items"][1]["bulk_item_status"] == "reviewed"
     assert data["items"][2]["operation_status"] == "failed"
     assert data["items"][2]["error"] == "No child job exists for this bulk item"
@@ -540,7 +541,14 @@ def test_bulk_endpoints_return_unified_not_found_errors(client) -> None:
 
     review_response = client.post(
         f"/api/v1/bulk/jobs/{missing_bulk_id}/review",
-        json={"jobs": [{"job_id": missing_bulk_id, "decisions": [{"finding_id": missing_bulk_id, "decision": "approved"}]}]},
+        json={
+            "jobs": [
+                {
+                    "job_id": missing_bulk_id,
+                    "decisions": [{"finding_id": missing_bulk_id, "decision": "approved"}],
+                }
+            ]
+        },
     )
     assert review_response.status_code == 404
     review_body = review_response.json()

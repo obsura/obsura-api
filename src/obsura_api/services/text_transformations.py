@@ -6,12 +6,17 @@ from collections import defaultdict
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from obsura_api.core.settings import Settings
 from obsura_api.db.models import Job, JobOutput
-from obsura_api.domain.enums import ContentType, FindingSource, JobStatus, ReviewDecision, TransformationMode
+from obsura_api.domain.enums import (
+    ContentType,
+    FindingSource,
+    JobStatus,
+    ReviewDecision,
+    TransformationMode,
+)
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
     FindingOverride,
@@ -21,9 +26,8 @@ from obsura_api.domain.workflows import (
     TextTransformResponse,
 )
 from obsura_api.services.jobs import finding_to_schema
-from obsura_api.services.utils import hash_value, normalize_token, summarize_findings
 from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
-
+from obsura_api.services.utils import hash_value, normalize_token, summarize_findings
 
 SOURCE_PRIORITY = {
     FindingSource.MANUAL: 0,
@@ -285,9 +289,7 @@ class TextTransformationService:
                 1,
             )
             suffix = (
-                original_value[len(original_value) - visible_suffix:]
-                if visible_suffix
-                else ""
+                original_value[len(original_value) - visible_suffix :] if visible_suffix else ""
             )
             return f"{original_value[:visible_prefix]}{masked}{suffix}"
 

@@ -312,8 +312,7 @@ class CSVWorkflowService:
             raise HTTPException(
                 status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=(
-                    "CSV exceeds the configured maximum row count of "
-                    f"{self.settings.max_csv_rows}"
+                    f"CSV exceeds the configured maximum row count of {self.settings.max_csv_rows}"
                 ),
             )
         column_count = max((len(row) for row in raw_rows), default=0)
@@ -349,8 +348,8 @@ class CSVWorkflowService:
 
         header_row = raw_rows[0] if has_header else []
         data_rows = raw_rows[1:] if has_header else raw_rows
-        physical_row_numbers = list(range(2, len(raw_rows) + 1)) if has_header else list(
-            range(1, len(raw_rows) + 1)
+        physical_row_numbers = (
+            list(range(2, len(raw_rows) + 1)) if has_header else list(range(1, len(raw_rows) + 1))
         )
         headers = self._resolve_headers(header_row, column_count, has_header)
         return ParsedCSV(
@@ -470,7 +469,10 @@ class CSVWorkflowService:
                     ),
                 )
             original_value = row[column_offset]
-            if validate_cell_hash and hash_value(original_value) != cell_hashes[(physical_row_number, column_index)]:
+            if (
+                validate_cell_hash
+                and hash_value(original_value) != cell_hashes[(physical_row_number, column_index)]
+            ):
                 raise HTTPException(
                     status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=(
@@ -588,7 +590,11 @@ class CSVWorkflowService:
         has_header = metadata.get("csv_has_header")
         delimiter = metadata.get("csv_delimiter")
         quotechar = metadata.get("csv_quotechar")
-        if not isinstance(has_header, bool) or not isinstance(delimiter, str) or not isinstance(quotechar, str):
+        if (
+            not isinstance(has_header, bool)
+            or not isinstance(delimiter, str)
+            or not isinstance(quotechar, str)
+        ):
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="CSV job is missing safe format metadata",
@@ -697,6 +703,8 @@ class CSVWorkflowService:
     ) -> dict[str, int]:
         return {
             "replacement_count": len(replacements),
-            "transformed_cell_count": len({(item.row_number, item.column_index) for item in replacements}),
+            "transformed_cell_count": len(
+                {(item.row_number, item.column_index) for item in replacements}
+            ),
             "formula_escape_count": formula_escape_count,
         }

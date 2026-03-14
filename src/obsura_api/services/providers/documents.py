@@ -106,10 +106,7 @@ class PypdfDocumentExtractor:
         if page_count > self.max_pages:
             raise HTTPException(
                 status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(
-                    "PDF exceeds the configured maximum page count of "
-                    f"{self.max_pages}"
-                ),
+                detail=(f"PDF exceeds the configured maximum page count of {self.max_pages}"),
             )
 
         pages: list[ExtractedDocumentPage] = []

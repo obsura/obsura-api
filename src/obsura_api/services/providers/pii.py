@@ -121,8 +121,7 @@ class PresidioPIIDetector:
                 resolved_path = (Path.cwd() / resolved_path).resolve()
             if not resolved_path.is_file():
                 raise RuntimeError(
-                    "Presidio recognizer registry file was not found at "
-                    f"`{resolved_path}`.",
+                    f"Presidio recognizer registry file was not found at `{resolved_path}`.",
                 )
             registry.add_recognizers_from_yaml(str(resolved_path))
         self.analyzer = AnalyzerEngine(

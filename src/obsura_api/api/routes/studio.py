@@ -138,7 +138,9 @@ def list_configurations(
 
 
 @router.get("/configurations/{configuration_id}", response_model=ApiResponse[ConfigurationRead])
-def get_configuration(configuration_id: UUID, session: SessionDep) -> ApiResponse[ConfigurationRead]:
+def get_configuration(
+    configuration_id: UUID, session: SessionDep
+) -> ApiResponse[ConfigurationRead]:
     """Fetch one saved configuration asset by identifier."""
 
     return success_response(StudioService(session).get_configuration(str(configuration_id)))
@@ -152,7 +154,9 @@ def update_configuration(
 ) -> ApiResponse[ConfigurationRead]:
     """Update part of a saved configuration asset."""
 
-    return success_response(StudioService(session).update_configuration(str(configuration_id), payload))
+    return success_response(
+        StudioService(session).update_configuration(str(configuration_id), payload)
+    )
 
 
 @router.get("/search", response_model=ApiResponse[list[SearchResultItem]])

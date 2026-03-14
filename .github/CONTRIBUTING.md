@@ -44,6 +44,7 @@ Every contribution must preserve these rules:
 - add or update tests for behavior changes
 - update docs when API contracts, workflows, or operational behavior change
 - regenerate `openapi.json` and `postman.json` after route or schema changes
+- run formatting, linting, type checks, and tests before opening a pull request
 - prefer explicit, maintainable code over clever shortcuts
 
 ## Development Setup
@@ -54,6 +55,22 @@ Every contribution must preserve these rules:
 4. Apply migrations with `obsura-api-migrate upgrade head`.
 5. Run the API with `python -m obsura_api.main`.
 6. Run tests with `python -m pytest`.
+7. Install local hooks with `python -m pre_commit install`.
+
+Recommended local quality checks:
+
+- `python -m ruff format src tests`
+- `python -m ruff check src tests`
+- `python -m mypy`
+- `python -m pytest --cov=src/obsura_api`
+
+The enforced type-checking baseline currently covers:
+
+- `src/obsura_api/api`
+- `src/obsura_api/core`
+- `src/obsura_api/domain`
+
+See [docs/architecture/CODE_STANDARDS.md](../docs/architecture/CODE_STANDARDS.md).
 
 ## Pull Request Guidelines
 

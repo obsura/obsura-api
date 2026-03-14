@@ -9,7 +9,12 @@ from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from obsura_api.core.settings import Settings
-from obsura_api.db.migrations import SchemaState, describe_schema_mismatch, get_schema_state, upgrade_database
+from obsura_api.db.migrations import (
+    SchemaState,
+    describe_schema_mismatch,
+    get_schema_state,
+    upgrade_database,
+)
 
 
 def create_engine_from_settings(settings: Settings) -> Engine:

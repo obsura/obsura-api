@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from obsura_api import __version__
 from obsura_api.api.dependencies import get_container, get_settings
+from obsura_api.api.responses import success_response
 from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings
 from obsura_api.db.migrations import describe_schema_mismatch, get_schema_state
 from obsura_api.db.session import verify_database_connection
-from obsura_api.api.responses import success_response
 from obsura_api.domain.common import ApiResponse
 from obsura_api.domain.operational import ServiceVersionInfo
 

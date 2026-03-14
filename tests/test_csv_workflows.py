@@ -12,7 +12,9 @@ def test_csv_analyze_returns_cell_aware_findings(client) -> None:
 
     assert response.status_code == 200
     body = response.json()["data"]
-    email_finding = next(item for item in body["findings"] if item["entity_type"] == "EMAIL_ADDRESS")
+    email_finding = next(
+        item for item in body["findings"] if item["entity_type"] == "EMAIL_ADDRESS"
+    )
     assert email_finding["kind"] == "structured_field"
     assert email_finding["metadata"]["csv_row_number"] == 2
     assert email_finding["metadata"]["csv_column_index"] == 1

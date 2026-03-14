@@ -304,7 +304,9 @@ class Settings(BaseSettings):
                     normalized_language = language.strip().lower()
                     normalized_model = model_name.strip()
                     if not normalized_language or not normalized_model:
-                        raise ValueError("Presidio model map entries must include both language and model.")
+                        raise ValueError(
+                            "Presidio model map entries must include both language and model."
+                        )
                     parsed[normalized_language] = normalized_model
                 return parsed
 
@@ -364,8 +366,7 @@ class Settings(BaseSettings):
 
         if self.is_production and not parsed_url.drivername.startswith("postgresql"):
             raise ValueError(
-                "Production environment requires a PostgreSQL DATABASE_URL or "
-                "OBSURA_DATABASE_URL.",
+                "Production environment requires a PostgreSQL DATABASE_URL or OBSURA_DATABASE_URL.",
             )
         if self.is_production and self.auto_create_schema:
             raise ValueError(
@@ -389,7 +390,11 @@ class Settings(BaseSettings):
         self.presidio_supported_languages = tuple(normalized_languages)
 
         normalized_model_map = dict(self.presidio_model_map)
-        if normalized_pii_language and self.presidio_model and normalized_pii_language not in normalized_model_map:
+        if (
+            normalized_pii_language
+            and self.presidio_model
+            and normalized_pii_language not in normalized_model_map
+        ):
             normalized_model_map[normalized_pii_language] = self.presidio_model.strip()
         self.presidio_model_map = normalized_model_map
 

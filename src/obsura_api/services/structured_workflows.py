@@ -246,14 +246,18 @@ class StructuredWorkflowService:
 
         replacements: list[StructuredReplacementRecord] = []
         for path_tokens, leaf_findings in findings_by_path.items():
-            value = self._resolve_leaf_value(transformed_data, path_tokens, path_labels[path_tokens])
+            value = self._resolve_leaf_value(
+                transformed_data, path_tokens, path_labels[path_tokens]
+            )
             output_text, leaf_replacements = self.text_transformations.apply_findings(
                 content=value,
                 findings=leaf_findings,
                 include_pending=include_pending,
                 default_transformation=default_transformation,
             )
-            self._set_leaf_value(transformed_data, path_tokens, output_text, path_labels[path_tokens])
+            self._set_leaf_value(
+                transformed_data, path_tokens, output_text, path_labels[path_tokens]
+            )
             for replacement in leaf_replacements:
                 replacements.append(
                     StructuredReplacementRecord(
@@ -395,7 +399,9 @@ class StructuredWorkflowService:
 
     def _structured_path_tokens(self, finding: FindingRecord) -> tuple[str | int, ...]:
         raw_tokens = finding.metadata.get("structured_path_tokens")
-        if not isinstance(raw_tokens, list) or not all(isinstance(item, str) for item in raw_tokens):
+        if not isinstance(raw_tokens, list) or not all(
+            isinstance(item, str) for item in raw_tokens
+        ):
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Structured finding is missing safe path metadata",
@@ -492,7 +498,9 @@ class StructuredWorkflowService:
         if job is None:
             return
         job.status = JobStatus.TRANSFORMED
-        output_json = json.dumps(output_data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        output_json = json.dumps(
+            output_data, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
         output = JobOutput(
             job_id=job.id,
             content_type=job.content_type,

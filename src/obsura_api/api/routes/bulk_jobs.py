@@ -8,7 +8,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from obsura_api.api.dependencies import get_container, get_db_session, get_pagination_params, get_settings
+from obsura_api.api.dependencies import (
+    get_container,
+    get_db_session,
+    get_pagination_params,
+    get_settings,
+)
 from obsura_api.api.responses import success_response
 from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings

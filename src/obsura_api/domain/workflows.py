@@ -97,7 +97,11 @@ class FindingOverride(BaseModel):
     def validate_override(self) -> "FindingOverride":
         if self.finding_id is None and self.start_index is None and self.end_index is None:
             raise ValueError("A finding override must target a stored finding or a text span")
-        if self.start_index is not None and self.end_index is not None and self.end_index <= self.start_index:
+        if (
+            self.start_index is not None
+            and self.end_index is not None
+            and self.end_index <= self.start_index
+        ):
             raise ValueError("`end_index` must be greater than `start_index`")
         if self.decision is None and self.transformation is None:
             raise ValueError("A finding override must change the decision or transformation")

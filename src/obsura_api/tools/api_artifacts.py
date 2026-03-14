@@ -801,7 +801,7 @@ def build_event_script(extractors: list[dict[str, Any]]) -> list[dict[str, Any]]
         "    break;",
         "  }",
         "  if (assigned) {",
-        '    console.log(`Set collection variable ${extractor.variable}`);',
+        "    console.log(`Set collection variable ${extractor.variable}`);",
         "  }",
         "}",
     ]
@@ -881,8 +881,7 @@ def build_postman_collection(openapi_document: dict[str, Any]) -> dict[str, Any]
 
     tag_order = [tag["name"] for tag in openapi_document.get("tags", [])]
     tag_descriptions = {
-        tag["name"]: tag.get("description", "")
-        for tag in openapi_document.get("tags", [])
+        tag["name"]: tag.get("description", "") for tag in openapi_document.get("tags", [])
     }
     grouped_items: dict[str, list[dict[str, Any]]] = {tag: [] for tag in tag_order}
 
@@ -928,8 +927,7 @@ def build_postman_collection(openapi_document: dict[str, Any]) -> dict[str, Any]
             "_postman_id": "obsura-api-collection",
         },
         "variable": [
-            {"key": key, "value": value, "type": "string"}
-            for key, value in COLLECTION_VARIABLES
+            {"key": key, "value": value, "type": "string"} for key, value in COLLECTION_VARIABLES
         ],
         "item": folders,
     }

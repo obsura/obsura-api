@@ -55,10 +55,14 @@ class TransformationRule(BaseModel):
         ):
             raise ValueError("`label_background_color` must be a hex color like `#111111`")
 
-        if self.mode in {
-            TransformationMode.CUSTOM,
-            TransformationMode.GENERIC,
-        } and not self.placeholder:
+        if (
+            self.mode
+            in {
+                TransformationMode.CUSTOM,
+                TransformationMode.GENERIC,
+            }
+            and not self.placeholder
+        ):
             self.placeholder = "[REDACTED]"
 
         if self.mode is TransformationMode.SEMANTIC and not self.semantic_label:

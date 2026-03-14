@@ -11,12 +11,7 @@ from obsura_api.core.settings import Settings
 
 
 def _escape_pdf_text(value: str) -> str:
-    return (
-        value.replace("\\", "\\\\")
-        .replace("(", "\\(")
-        .replace(")", "\\)")
-        .replace("\n", "\\n")
-    )
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)").replace("\n", "\\n")
 
 
 def _build_pdf(*page_texts: str) -> bytes:
@@ -36,9 +31,7 @@ def _build_pdf(*page_texts: str) -> bytes:
         content_id = page_id + 1
         object_ids.extend([page_id, content_id])
         content_stream = (
-            "BT\n/F1 12 Tf\n72 720 Td\n("
-            + _escape_pdf_text(page_text)
-            + ") Tj\nET"
+            "BT\n/F1 12 Tf\n72 720 Td\n(" + _escape_pdf_text(page_text) + ") Tj\nET"
         ).encode("latin-1")
         objects[page_id] = (
             f"{page_id} 0 obj\n"
@@ -107,7 +100,9 @@ def test_document_analyze_returns_page_aware_findings(document_client: TestClien
 
     assert response.status_code == 200
     body = response.json()["data"]
-    email_finding = next(item for item in body["findings"] if item["entity_type"] == "EMAIL_ADDRESS")
+    email_finding = next(
+        item for item in body["findings"] if item["entity_type"] == "EMAIL_ADDRESS"
+    )
     assert body["page_count"] == 1
     assert body["pages"][0]["page_number"] == 1
     assert email_finding["metadata"]["document_kind"] == "pdf"
@@ -142,7 +137,9 @@ def test_document_transform_redacts_without_persisting_raw_pdf(document_client: 
     assert job["outputs"][0]["metadata"]["document_kind"] == "pdf"
 
 
-def test_document_review_and_transform_job_requires_matching_pdf(document_client: TestClient) -> None:
+def test_document_review_and_transform_job_requires_matching_pdf(
+    document_client: TestClient,
+) -> None:
     original_pdf = _build_pdf("Contact john@example.com for review")
 
     analyze_response = document_client.post(

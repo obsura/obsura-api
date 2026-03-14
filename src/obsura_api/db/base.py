@@ -38,4 +38,3 @@ class TimestampedUUIDMixin:
         onupdate=utcnow,
         nullable=False,
     )
-

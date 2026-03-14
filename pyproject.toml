@@ -33,7 +33,11 @@ classifiers = [
 [project.optional-dependencies]
 dev = [
   "httpx>=0.28.1",
+  "mypy>=1.19.1",
+  "pre-commit>=4.5.1",
   "pytest>=8.3.5",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.15.6",
 ]
 presidio = [
   "presidio-analyzer>=2.2.360; python_version < '3.14'",
@@ -58,3 +62,43 @@ packages = ["src/obsura_api"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["obsura_api"]
+
+[tool.mypy]
+python_version = "3.12"
+files = [
+  "src/obsura_api/api",
+  "src/obsura_api/core",
+  "src/obsura_api/domain",
+]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+follow_imports = "silent"
+ignore_missing_imports = true
+no_implicit_optional = true
+pretty = true
+show_error_codes = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.coverage.run]
+branch = true
+source = ["src/obsura_api"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from obsura_api.db.models import CustomEntity, Pattern, StudioConfiguration
 from obsura_api.domain.common import PaginationMeta, PaginationParams, build_pagination_meta
+from obsura_api.domain.enums import MatcherKind
 from obsura_api.domain.studio import (
     ConfigurationCreate,
     ConfigurationRead,
@@ -21,7 +22,6 @@ from obsura_api.domain.studio import (
     PatternRead,
     PatternUpdate,
 )
-from obsura_api.domain.enums import MatcherKind
 
 
 class StudioService:
@@ -153,7 +153,9 @@ class StudioService:
         self,
         pagination: PaginationParams,
     ) -> tuple[list[ConfigurationRead], PaginationMeta]:
-        total_items = self.session.scalar(select(func.count()).select_from(StudioConfiguration)) or 0
+        total_items = (
+            self.session.scalar(select(func.count()).select_from(StudioConfiguration)) or 0
+        )
         configurations = self.session.scalars(
             select(StudioConfiguration)
             .order_by(StudioConfiguration.created_at.desc())
