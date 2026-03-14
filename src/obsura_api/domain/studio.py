@@ -26,6 +26,7 @@ class PatternMatcherDefinition(BaseModel):
             ContentType.TEXT,
             ContentType.STRUCTURED_TEXT,
             ContentType.DOCUMENT,
+            ContentType.CSV,
         ],
     )
 
@@ -182,5 +183,6 @@ class PatternFromSelectionRequest(BaseModel):
             ContentType.TEXT,
             ContentType.STRUCTURED_TEXT,
             ContentType.DOCUMENT,
+            ContentType.CSV,
         ],
     )

@@ -2,7 +2,8 @@
 
 `obsura-api` is the backend workflow and orchestration layer for Obsura. It is
 responsible for review-first sanitization flows, persistent studio assets,
-search, and job history across text, screenshots, and image-region workflows.
+search, and job history across text, CSV, PDF, screenshots, and image-region
+workflows.
 
 ## Current Scope
 
@@ -14,9 +15,11 @@ This repository currently provides:
 - persisted bulk text submissions that group multiple reviewable child jobs
 - bulk review and bulk text transform across one persisted bulk run
 - built-in, custom, exact-value, and manual text detection
+- review-first CSV file workflows with cell-level findings and safe export
 - reviewable job history and finding decisions
 - text transformation with semantic, custom, partial-mask, and stable-alias
   modes
+- review-first PDF text extraction workflows for text-based documents
 - image-region transformation for blur, pixelation, masks, and overlays using
   manual or pre-supplied regions
 - optional Presidio-backed NLP PII detection layered onto text and OCR flows
@@ -94,6 +97,8 @@ Current operational endpoints:
 - `GET /api/v1/ready` for dependency-aware readiness
 - `GET /api/v1/version` for runtime version and backend metadata
 - `POST /api/v1/bulk/text/analyze` for review-first bulk text analysis
+- `POST /api/v1/workflows/csv/analyze` and related CSV transform routes
+- `POST /api/v1/workflows/documents/analyze` and related PDF transform routes
 - `GET /api/v1/bulk/jobs` and `GET /api/v1/bulk/jobs/{bulk_id}` for bulk run
   inspection
 - `POST /api/v1/bulk/jobs/{bulk_id}/review` for bulk finding review
@@ -212,6 +217,11 @@ deployments:
 - `OBSURA_MAX_BULK_TEXT_ITEM_CHARACTERS` limits characters per bulk text item
 - `OBSURA_MAX_BULK_TEXT_TOTAL_CHARACTERS` limits the combined payload size for
   bulk text analysis
+- `OBSURA_MAX_CSV_ROWS` limits CSV row count
+- `OBSURA_MAX_CSV_COLUMNS` limits CSV column count
+- `OBSURA_MAX_CSV_CHARACTERS` limits CSV total character count
+- `OBSURA_MAX_DOCUMENT_PAGES` limits PDF page count
+- `OBSURA_MAX_DOCUMENT_EXTRACTED_CHARACTERS` limits extracted PDF text
 - image uploads must use a supported image MIME type
 - public API responses expose storage-root relative file references rather than
   raw absolute filesystem paths

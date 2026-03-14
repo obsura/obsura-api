@@ -87,6 +87,29 @@ def test_postman_collection_uses_chained_variables() -> None:
     assert "{{jobId}}" in structured_transform_job_request["request"]["body"]["raw"]
     assert "{{findingId}}" in structured_transform_job_request["request"]["body"]["raw"]
 
+    csv_folder = next(item for item in collection["item"] if item["name"] == "Csv Workflows")
+    analyze_csv_request = next(
+        item for item in csv_folder["item"] if item["name"] == "Analyze CSV"
+    )
+    csv_manifest_field = next(
+        item
+        for item in analyze_csv_request["request"]["body"]["formdata"]
+        if item["key"] == "manifest_json"
+    )
+    assert '"has_header": true' in csv_manifest_field["value"]
+    assert analyze_csv_request["event"]
+
+    transform_csv_job_request = next(
+        item for item in csv_folder["item"] if item["name"] == "Transform CSV Job"
+    )
+    csv_transform_manifest_field = next(
+        item
+        for item in transform_csv_job_request["request"]["body"]["formdata"]
+        if item["key"] == "manifest_json"
+    )
+    assert "{{jobId}}" in csv_transform_manifest_field["value"]
+    assert "{{findingId}}" in csv_transform_manifest_field["value"]
+
     document_folder = next(
         item for item in collection["item"] if item["name"] == "Document Workflows"
     )

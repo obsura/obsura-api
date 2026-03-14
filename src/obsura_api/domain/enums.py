@@ -9,6 +9,7 @@ class ContentType(str, Enum):
     TEXT = "text"
     STRUCTURED_TEXT = "structured_text"
     DOCUMENT = "document"
+    CSV = "csv"
     SCREENSHOT = "screenshot"
     IMAGE = "image"
 
