@@ -23,6 +23,7 @@ def test_friendly_api_root_returns_public_metadata(client) -> None:
         "version": "v0.1.0",
         "ocr_available": False,
         "face_detection_available": False,
+        "pii_available": False,
     }
 
 
@@ -56,8 +57,10 @@ def test_ready_and_version_endpoints(client) -> None:
     expected_head = get_head_revision("sqlite:///./example.db")
     assert version_body["data"]["schema_revision"] == expected_head
     assert version_body["data"]["schema_head"] == expected_head
+    assert version_body["data"]["pii_backend"] == "noop-pii-detector"
     assert version_body["data"]["ocr_available"] is False
     assert version_body["data"]["face_detection_available"] is False
+    assert version_body["data"]["pii_available"] is False
 
 
 def test_cors_preflight_allows_local_frontend(client) -> None:

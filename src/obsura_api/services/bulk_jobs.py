@@ -35,6 +35,7 @@ from obsura_api.domain.jobs import JobReviewRequest
 from obsura_api.domain.workflows import TextTransformRequest
 from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import JobService
+from obsura_api.services.providers.pii import PIIDetector, NoOpPIIDetector
 from obsura_api.services.text_transformations import TextTransformationService
 from obsura_api.services.utils import summarize_findings
 
@@ -185,10 +186,19 @@ def bulk_job_to_schema(item: BulkJob) -> BulkJobRead:
 class BulkJobService:
     """Create, inspect, review, and transform persisted bulk text submissions."""
 
-    def __init__(self, session: Session, settings: Settings) -> None:
+    def __init__(
+        self,
+        session: Session,
+        settings: Settings,
+        pii_detector: PIIDetector | None = None,
+    ) -> None:
         self.session = session
         self.settings = settings
-        self.text_detection = TextDetectionService(session, settings)
+        self.text_detection = TextDetectionService(
+            session,
+            settings,
+            pii_detector=pii_detector or NoOpPIIDetector(),
+        )
         self.job_service = JobService(session)
         self.text_transformations = TextTransformationService(session)
 

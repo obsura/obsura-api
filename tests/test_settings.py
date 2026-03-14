@@ -32,6 +32,15 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_OCR_PROVIDER",
         "OBSURA_OCR_LANGUAGE",
         "OBSURA_TESSERACT_LANG",
+        "OBSURA_PII_BACKEND",
+        "OBSURA_PII_PROVIDER",
+        "OBSURA_NLP_BACKEND",
+        "OBSURA_PII_LANGUAGE",
+        "OBSURA_PRESIDIO_LANGUAGE",
+        "OBSURA_PRESIDIO_MODEL",
+        "OBSURA_PII_MODEL",
+        "OBSURA_PRESIDIO_SCORE_THRESHOLD",
+        "OBSURA_PII_SCORE_THRESHOLD",
     ):
         monkeypatch.delenv(key, raising=False)
     get_settings.cache_clear()
@@ -122,6 +131,20 @@ def test_default_cors_origins_allow_local_frontends() -> None:
         "http://localhost:3000",
     )
     assert settings.cors_allow_credentials is True
+
+
+def test_reads_pii_settings_from_aliases(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_NLP_BACKEND", "presidio")
+    monkeypatch.setenv("OBSURA_PRESIDIO_LANGUAGE", "en")
+    monkeypatch.setenv("OBSURA_PII_MODEL", "en_core_web_sm")
+    monkeypatch.setenv("OBSURA_PII_SCORE_THRESHOLD", "0.55")
+
+    settings = Settings(_env_file=None)
+
+    assert settings.pii_backend == "presidio"
+    assert settings.pii_language == "en"
+    assert settings.presidio_model == "en_core_web_sm"
+    assert settings.presidio_score_threshold == 0.55
 
 
 def test_parses_comma_separated_cors_origins(monkeypatch) -> None:

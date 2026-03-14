@@ -26,6 +26,7 @@ from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.providers.ocr import OCRBlock, OCRProvider
+from obsura_api.services.providers.pii import PIIDetector, NoOpPIIDetector
 from obsura_api.services.storage import StorageService
 from obsura_api.services.studio import StudioService
 from obsura_api.services.utils import hash_value, preview_value, summarize_findings
@@ -41,6 +42,7 @@ class ImageWorkflowService:
         storage: StorageService,
         ocr_provider: OCRProvider,
         face_detector: FaceDetector,
+        pii_detector: PIIDetector | None = None,
     ) -> None:
         self.session = session
         self.settings = settings
@@ -48,7 +50,11 @@ class ImageWorkflowService:
         self.ocr_provider = ocr_provider
         self.face_detector = face_detector
         self.studio = StudioService(session)
-        self.text_detection = TextDetectionService(session, settings)
+        self.text_detection = TextDetectionService(
+            session,
+            settings,
+            pii_detector=pii_detector or NoOpPIIDetector(),
+        )
 
     def analyze(
         self,

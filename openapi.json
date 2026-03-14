@@ -78,7 +78,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse_dict_str__str__"
+                  "$ref": "#/components/schemas/ApiResponse_ServiceVersionInfo_"
                 }
               }
             }
@@ -1882,6 +1882,60 @@
           "success"
         ],
         "title": "ApiResponse[PatternRead]"
+      },
+      "ApiResponse_ServiceVersionInfo_": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServiceVersionInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaginationMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "title": "ApiResponse[ServiceVersionInfo]"
       },
       "ApiResponse_TextAnalysisResponse_": {
         "properties": {
@@ -5360,6 +5414,75 @@
           "job"
         ],
         "title": "SearchResultKind"
+      },
+      "ServiceVersionInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "environment": {
+            "type": "string",
+            "title": "Environment"
+          },
+          "database_backend": {
+            "type": "string",
+            "title": "Database Backend"
+          },
+          "schema_revision": {
+            "type": "string",
+            "title": "Schema Revision"
+          },
+          "schema_head": {
+            "type": "string",
+            "title": "Schema Head"
+          },
+          "ocr_backend": {
+            "type": "string",
+            "title": "Ocr Backend"
+          },
+          "face_detector_backend": {
+            "type": "string",
+            "title": "Face Detector Backend"
+          },
+          "pii_backend": {
+            "type": "string",
+            "title": "Pii Backend"
+          },
+          "ocr_available": {
+            "type": "boolean",
+            "title": "Ocr Available"
+          },
+          "face_detection_available": {
+            "type": "boolean",
+            "title": "Face Detection Available"
+          },
+          "pii_available": {
+            "type": "boolean",
+            "title": "Pii Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "environment",
+          "database_backend",
+          "schema_revision",
+          "schema_head",
+          "ocr_backend",
+          "face_detector_backend",
+          "pii_backend",
+          "ocr_available",
+          "face_detection_available",
+          "pii_available"
+        ],
+        "title": "ServiceVersionInfo",
+        "description": "Runtime version and capability metadata."
       },
       "TextAnalysisRequest": {
         "properties": {

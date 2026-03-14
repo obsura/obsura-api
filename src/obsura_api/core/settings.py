@@ -62,6 +62,37 @@ class Settings(BaseSettings):
             "OBSURA_TESSERACT_LANG",
         ),
     )
+    pii_backend: str = Field(
+        default="noop",
+        validation_alias=AliasChoices(
+            "OBSURA_PII_BACKEND",
+            "OBSURA_PII_PROVIDER",
+            "OBSURA_NLP_BACKEND",
+        ),
+    )
+    pii_language: str = Field(
+        default="en",
+        validation_alias=AliasChoices(
+            "OBSURA_PII_LANGUAGE",
+            "OBSURA_PRESIDIO_LANGUAGE",
+        ),
+    )
+    presidio_model: str = Field(
+        default="en_core_web_sm",
+        validation_alias=AliasChoices(
+            "OBSURA_PRESIDIO_MODEL",
+            "OBSURA_PII_MODEL",
+        ),
+    )
+    presidio_score_threshold: float = Field(
+        default=0.35,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices(
+            "OBSURA_PRESIDIO_SCORE_THRESHOLD",
+            "OBSURA_PII_SCORE_THRESHOLD",
+        ),
+    )
     storage_root: Path = Field(default=Path("storage"))
     media_mount_path: str = "/media"
     auto_create_schema: bool = False

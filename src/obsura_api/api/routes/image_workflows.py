@@ -98,6 +98,7 @@ async def analyze_image(
         storage=container.storage,
         ocr_provider=container.ocr_provider,
         face_detector=container.face_detector,
+        pii_detector=container.pii_detector,
     )
     return success_response(
         service.analyze(
@@ -126,6 +127,7 @@ async def transform_image(
         storage=container.storage,
         ocr_provider=container.ocr_provider,
         face_detector=container.face_detector,
+        pii_detector=container.pii_detector,
     )
     return success_response(
         service.transform(
@@ -151,5 +153,6 @@ def transform_image_job(
         storage=container.storage,
         ocr_provider=container.ocr_provider,
         face_detector=container.face_detector,
+        pii_detector=container.pii_detector,
     )
     return success_response(service.transform_job(payload))
