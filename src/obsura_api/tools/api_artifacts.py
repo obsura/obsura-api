@@ -121,12 +121,20 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             "mode": "blur",
             "blur_radius": 10,
         },
+        "pii_detection": {
+            "language": "en",
+            "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS", "PERSON"],
+            "context_words": ["customer", "email", "server"],
+        },
         "face_preferences": {"mode": "blur", "blur_radius": 12},
         "metadata": {"team": "platform"},
     },
     ("PATCH", "/api/v1/studio/configurations/{configuration_id}"): {
         "description": "Updated preset description.",
         "tags": ["ops", "updated"],
+        "pii_detection": {
+            "context_words": ["customer", "contact", "email"],
+        },
         "metadata": {"team": "platform", "status": "reviewed"},
     },
     ("POST", "/api/v1/jobs/{job_id}/review"): {
@@ -148,6 +156,11 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
         "pattern_ids": ["{{patternId}}"],
         "custom_entity_ids": ["{{entityId}}"],
         "configuration_ids": ["{{configurationId}}"],
+        "pii_detection": {
+            "language": "en",
+            "entity_allow_list": ["EMAIL_ADDRESS", "URL"],
+            "context_words": ["login", "customer", "contact"],
+        },
         "exact_values": ["root", "admin"],
         "persist_source_content": False,
         "items": [
@@ -206,6 +219,11 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
         "pattern_ids": ["{{patternId}}"],
         "custom_entity_ids": ["{{entityId}}"],
         "configuration_ids": ["{{configurationId}}"],
+        "pii_detection": {
+            "language": "en",
+            "entity_allow_list": ["EMAIL_ADDRESS", "URL", "IP_ADDRESS"],
+            "context_words": ["customer", "support", "server"],
+        },
         "exact_values": ["root"],
         "manual_spans": [],
         "default_transformation": {
@@ -272,6 +290,11 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 "configuration_ids": ["{{configurationId}}"],
                 "pattern_ids": ["{{patternId}}"],
                 "custom_entity_ids": ["{{entityId}}"],
+                "pii_detection": {
+                    "language": "en",
+                    "entity_allow_list": ["PERSON", "EMAIL_ADDRESS"],
+                    "context_words": ["customer", "email", "contact"],
+                },
                 "apply_builtins": True,
                 "detect_text": True,
                 "regions": [
@@ -298,6 +321,11 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 "configuration_ids": ["{{configurationId}}"],
                 "pattern_ids": ["{{patternId}}"],
                 "custom_entity_ids": ["{{entityId}}"],
+                "pii_detection": {
+                    "language": "en",
+                    "entity_allow_list": ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER"],
+                    "context_words": ["customer", "contact", "support"],
+                },
                 "apply_builtins": True,
                 "detect_text": True,
                 "regions": [

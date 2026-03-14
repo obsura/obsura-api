@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from obsura_api.domain.common import TimestampedModel, UuidReference
 from obsura_api.domain.enums import ConfigurationKind, ContentType, MatcherKind
+from obsura_api.domain.pii import PIIDetectionOptions
 from obsura_api.domain.transforms import TransformationRule
 
 
@@ -129,6 +130,7 @@ class ConfigurationBase(BaseModel):
     custom_entity_ids: list[UuidReference] = Field(default_factory=list)
     default_text_transformation: TransformationRule | None = None
     default_image_transformation: TransformationRule | None = None
+    pii_detection: PIIDetectionOptions | None = None
     face_preferences: dict[str, str | int | bool] = Field(default_factory=dict)
     metadata: dict[str, str | int | bool | list[str]] = Field(default_factory=dict)
 
@@ -151,6 +153,7 @@ class ConfigurationUpdate(BaseModel):
     custom_entity_ids: list[UuidReference] | None = None
     default_text_transformation: TransformationRule | None = None
     default_image_transformation: TransformationRule | None = None
+    pii_detection: PIIDetectionOptions | None = None
     face_preferences: dict[str, str | int | bool] | None = None
     metadata: dict[str, str | int | bool | list[str]] | None = None
 

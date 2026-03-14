@@ -41,6 +41,12 @@ def clear_settings_env(monkeypatch) -> None:
         "OBSURA_PII_MODEL",
         "OBSURA_PRESIDIO_SCORE_THRESHOLD",
         "OBSURA_PII_SCORE_THRESHOLD",
+        "OBSURA_PRESIDIO_SUPPORTED_LANGUAGES",
+        "OBSURA_PII_SUPPORTED_LANGUAGES",
+        "OBSURA_PRESIDIO_MODEL_MAP",
+        "OBSURA_PII_MODEL_MAP",
+        "OBSURA_PRESIDIO_RECOGNIZERS_PATH",
+        "OBSURA_PII_RECOGNIZERS_PATH",
     ):
         monkeypatch.delenv(key, raising=False)
     get_settings.cache_clear()
@@ -145,6 +151,35 @@ def test_reads_pii_settings_from_aliases(monkeypatch) -> None:
     assert settings.pii_language == "en"
     assert settings.presidio_model == "en_core_web_sm"
     assert settings.presidio_score_threshold == 0.55
+
+
+def test_reads_extended_presidio_settings(monkeypatch, tmp_path: Path) -> None:
+    recognizers_path = tmp_path / "recognizers.yml"
+    monkeypatch.setenv("OBSURA_PII_BACKEND", "presidio")
+    monkeypatch.setenv("OBSURA_PRESIDIO_SUPPORTED_LANGUAGES", "en,es")
+    monkeypatch.setenv(
+        "OBSURA_PRESIDIO_MODEL_MAP",
+        '{"en":"en_core_web_sm","es":"es_core_news_sm"}',
+    )
+    monkeypatch.setenv("OBSURA_PRESIDIO_RECOGNIZERS_PATH", str(recognizers_path))
+
+    settings = Settings(_env_file=None)
+
+    assert settings.presidio_supported_languages == ("en", "es")
+    assert settings.presidio_model_map == {
+        "en": "en_core_web_sm",
+        "es": "es_core_news_sm",
+    }
+    assert settings.presidio_recognizers_path == recognizers_path
+
+
+def test_presidio_requires_model_for_each_configured_language(monkeypatch) -> None:
+    monkeypatch.setenv("OBSURA_PII_BACKEND", "presidio")
+    monkeypatch.setenv("OBSURA_PRESIDIO_SUPPORTED_LANGUAGES", "en,es")
+    monkeypatch.setenv("OBSURA_PRESIDIO_MODEL_MAP", '{"en":"en_core_web_sm"}')
+
+    with pytest.raises(ValidationError, match="Missing model mapping for: es"):
+        Settings(_env_file=None)
 
 
 def test_parses_comma_separated_cors_origins(monkeypatch) -> None:

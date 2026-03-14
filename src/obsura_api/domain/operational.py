@@ -30,6 +30,8 @@ class ServiceVersionInfo(BaseModel):
     ocr_backend: str
     face_detector_backend: str
     pii_backend: str
+    pii_languages: list[str]
+    pii_custom_recognizers: bool
     ocr_available: bool
     face_detection_available: bool
     pii_available: bool

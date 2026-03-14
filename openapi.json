@@ -3122,6 +3122,16 @@
             "type": "array",
             "title": "Configuration Ids"
           },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "exact_values": {
             "items": {
               "type": "string"
@@ -3513,6 +3523,16 @@
               }
             ]
           },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "face_preferences": {
             "additionalProperties": {
               "anyOf": [
@@ -3647,6 +3667,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
               },
               {
                 "type": "null"
@@ -3824,6 +3854,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/TransformationRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
               },
               {
                 "type": "null"
@@ -4910,6 +4950,41 @@
         ],
         "title": "OverlayShape"
       },
+      "PIIDetectionOptions": {
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 16,
+                "minLength": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "entity_allow_list": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Allow List"
+          },
+          "context_words": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Context Words"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PIIDetectionOptions",
+        "description": "Per-request or per-configuration PII detection tuning."
+      },
       "PaginationMeta": {
         "properties": {
           "page": {
@@ -5484,6 +5559,17 @@
             "type": "string",
             "title": "Pii Backend"
           },
+          "pii_languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pii Languages"
+          },
+          "pii_custom_recognizers": {
+            "type": "boolean",
+            "title": "Pii Custom Recognizers"
+          },
           "ocr_available": {
             "type": "boolean",
             "title": "Ocr Available"
@@ -5508,6 +5594,8 @@
           "ocr_backend",
           "face_detector_backend",
           "pii_backend",
+          "pii_languages",
+          "pii_custom_recognizers",
           "ocr_available",
           "face_detection_available",
           "pii_available"
@@ -5565,6 +5653,16 @@
             },
             "type": "array",
             "title": "Configuration Ids"
+          },
+          "pii_detection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PIIDetectionOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "exact_values": {
             "items": {

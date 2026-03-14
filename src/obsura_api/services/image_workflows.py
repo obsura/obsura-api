@@ -331,12 +331,13 @@ class ImageWorkflowService:
             )
 
         ocr_blocks = self.ocr_provider.extract_text(file_bytes)
-        patterns, entities, text_default_transformation = (
+        patterns, entities, text_default_transformation, pii_detection = (
             self.text_detection.resolve_transient_detection_context(
                 content_type=ContentType.TEXT,
                 pattern_ids=manifest.pattern_ids,
                 custom_entity_ids=manifest.custom_entity_ids,
                 configuration_ids=manifest.configuration_ids,
+                pii_detection=manifest.pii_detection,
             )
         )
         findings: list[FindingRecord] = []
@@ -350,6 +351,7 @@ class ImageWorkflowService:
                 patterns=patterns,
                 entities=entities,
                 default_transformation=text_default_transformation,
+                pii_detection=pii_detection,
             )
             for text_finding in text_findings:
                 region = self._region_for_text_finding(block, text_finding)

@@ -14,6 +14,7 @@ from obsura_api.domain.enums import (
     JobStatus,
 )
 from obsura_api.domain.jobs import JobReviewDecisionInput
+from obsura_api.domain.pii import PIIDetectionOptions
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingOverride
 
@@ -39,6 +40,7 @@ class BulkTextAnalyzeRequest(BaseModel):
     pattern_ids: list[UuidReference] = Field(default_factory=list)
     custom_entity_ids: list[UuidReference] = Field(default_factory=list)
     configuration_ids: list[UuidReference] = Field(default_factory=list)
+    pii_detection: PIIDetectionOptions | None = None
     exact_values: list[str] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
     persist_source_content: bool | None = None
