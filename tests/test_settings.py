@@ -9,9 +9,9 @@ from sqlalchemy import inspect
 
 from obsura_api import app as app_module
 from obsura_api.core.settings import DEFAULT_DEVELOPMENT_DATABASE_URL, Settings, get_settings
+from obsura_api.db import session as session_module
 from obsura_api.db.base import Base
 from obsura_api.db.migrations import SchemaState, get_schema_state
-from obsura_api.db import session as session_module
 
 
 @pytest.fixture(autouse=True)
@@ -224,7 +224,9 @@ def test_presidio_requires_model_for_each_configured_language(monkeypatch) -> No
 def test_rejects_short_text_hash_salt(monkeypatch) -> None:
     monkeypatch.setenv("OBSURA_TEXT_HASH_SALT", "short")
 
-    with pytest.raises(ValidationError, match="OBSURA_TEXT_HASH_SALT must be at least 16 bytes long"):
+    with pytest.raises(
+        ValidationError, match="OBSURA_TEXT_HASH_SALT must be at least 16 bytes long"
+    ):
         Settings(_env_file=None)
 
 
@@ -368,7 +370,9 @@ def test_ensure_database_schema_applies_migrations_when_enabled(tmp_path: Path) 
     assert "patterns" in inspect(engine).get_table_names()
 
 
-def test_ensure_database_schema_rejects_uninitialized_database_when_disabled(tmp_path: Path) -> None:
+def test_ensure_database_schema_rejects_uninitialized_database_when_disabled(
+    tmp_path: Path,
+) -> None:
     database_path = tmp_path / "missing-schema.db"
     settings = Settings(
         database_url=f"sqlite:///{database_path.as_posix()}",

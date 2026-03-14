@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from obsura_api.db.base import Base, TimestampedUUIDMixin
@@ -136,7 +136,9 @@ class BulkJobItem(TimestampedUUIDMixin, Base):
 
     __tablename__ = "bulk_job_items"
     __table_args__ = (
-        UniqueConstraint("bulk_job_id", "item_index", name="uq_bulk_job_items_bulk_job_id_item_index"),
+        UniqueConstraint(
+            "bulk_job_id", "item_index", name="uq_bulk_job_items_bulk_job_id_item_index"
+        ),
     )
 
     bulk_job_id: Mapped[str] = mapped_column(ForeignKey("bulk_jobs.id"), index=True, nullable=False)

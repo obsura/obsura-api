@@ -7,7 +7,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from obsura_api.db.models import CustomEntity, Job, Pattern, StudioConfiguration
-from obsura_api.domain.common import PaginationMeta, PaginationParams, SearchResultItem, build_pagination_meta
+from obsura_api.domain.common import (
+    PaginationMeta,
+    PaginationParams,
+    SearchResultItem,
+    build_pagination_meta,
+)
 from obsura_api.domain.enums import SearchResultKind
 
 

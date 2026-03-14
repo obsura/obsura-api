@@ -13,6 +13,7 @@ repository root.
 
 - [STACK.md](architecture/STACK.md)
 - [TOOLING.md](architecture/TOOLING.md)
+- [CODE_STANDARDS.md](architecture/CODE_STANDARDS.md)
 
 ## Operations
 

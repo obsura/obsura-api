@@ -77,7 +77,9 @@ class StorageService:
     ) -> str:
         """Store a short-lived source artifact in memory."""
 
-        target_suffix = self._normalize_suffix(suffix or Path(filename or "upload.bin").suffix or ".bin")
+        target_suffix = self._normalize_suffix(
+            suffix or Path(filename or "upload.bin").suffix or ".bin"
+        )
         reference = f"{UPLOAD_REFERENCE_PREFIX}{uuid4().hex}{target_suffix}"
         self._store_artifact(
             reference,
@@ -175,7 +177,9 @@ class StorageService:
         if candidate.is_absolute():
             resolved_candidates.append(candidate.resolve(strict=False))
         else:
-            resolved_candidates.append((self.settings.storage_root / candidate).resolve(strict=False))
+            resolved_candidates.append(
+                (self.settings.storage_root / candidate).resolve(strict=False)
+            )
             resolved_candidates.append(candidate.resolve(strict=False))
 
         for resolved in resolved_candidates:
@@ -239,7 +243,9 @@ class StorageService:
         content: bytes,
         media_type: str,
     ) -> None:
-        expires_at = datetime.now(UTC) + timedelta(seconds=self.settings.ephemeral_artifact_ttl_seconds)
+        expires_at = datetime.now(UTC) + timedelta(
+            seconds=self.settings.ephemeral_artifact_ttl_seconds
+        )
         with self._lock:
             self._sweep_expired_locked()
             self._artifacts[reference] = StoredArtifact(

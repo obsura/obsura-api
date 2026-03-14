@@ -7,7 +7,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from obsura_api.db.models import Job, JobFinding, JobOutput
-from obsura_api.domain.common import BoundingBox, PaginationMeta, PaginationParams, build_pagination_meta
+from obsura_api.domain.common import (
+    BoundingBox,
+    PaginationMeta,
+    PaginationParams,
+    build_pagination_meta,
+)
 from obsura_api.domain.enums import JobStatus
 from obsura_api.domain.jobs import JobOutputRecord, JobRead, JobReviewRequest
 from obsura_api.domain.transforms import TransformationRule

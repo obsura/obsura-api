@@ -49,7 +49,9 @@ class BulkTextAnalyzeRequest(BaseModel):
     @model_validator(mode="after")
     def validate_request(self) -> "BulkTextAnalyzeRequest":
         if self.content_type not in {ContentType.TEXT, ContentType.STRUCTURED_TEXT}:
-            raise ValueError("Bulk text workflows only support `text` and `structured_text` content")
+            raise ValueError(
+                "Bulk text workflows only support `text` and `structured_text` content"
+            )
 
         seen_client_ids: set[str] = set()
         for item in self.items:
@@ -162,9 +164,13 @@ class BulkTextTransformOverride(BaseModel):
 
     @model_validator(mode="after")
     def validate_overrides(self) -> "BulkTextTransformOverride":
-        finding_ids = [override.finding_id for override in self.finding_overrides if override.finding_id]
+        finding_ids = [
+            override.finding_id for override in self.finding_overrides if override.finding_id
+        ]
         if len(finding_ids) != len(set(finding_ids)):
-            raise ValueError("Bulk transform overrides must not target the same finding more than once")
+            raise ValueError(
+                "Bulk transform overrides must not target the same finding more than once"
+            )
         return self
 
 

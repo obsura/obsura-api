@@ -42,9 +42,7 @@ def test_postman_collection_uses_chained_variables() -> None:
     assert "{{jobId}}" in bulk_transform_request["request"]["body"]["raw"]
 
     jobs_folder = next(item for item in collection["item"] if item["name"] == "Jobs")
-    get_job_request = next(
-        item for item in jobs_folder["item"] if item["name"] == "Get Job"
-    )
+    get_job_request = next(item for item in jobs_folder["item"] if item["name"] == "Get Job")
     assert "{{jobId}}" in get_job_request["request"]["url"]["raw"]
     assert get_job_request["event"]
 
@@ -88,9 +86,7 @@ def test_postman_collection_uses_chained_variables() -> None:
     assert "{{findingId}}" in structured_transform_job_request["request"]["body"]["raw"]
 
     csv_folder = next(item for item in collection["item"] if item["name"] == "Csv Workflows")
-    analyze_csv_request = next(
-        item for item in csv_folder["item"] if item["name"] == "Analyze CSV"
-    )
+    analyze_csv_request = next(item for item in csv_folder["item"] if item["name"] == "Analyze CSV")
     csv_manifest_field = next(
         item
         for item in analyze_csv_request["request"]["body"]["formdata"]

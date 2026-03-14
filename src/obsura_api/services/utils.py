@@ -56,4 +56,3 @@ def summarize_findings(findings: list[FindingRecord]) -> dict[str, int]:
         "approved": approved,
         "rejected": rejected,
     }
-

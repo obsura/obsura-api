@@ -44,7 +44,9 @@ def test_text_review_and_transform_flow(client) -> None:
         review_payload["decisions"].append(
             {
                 "finding_id": finding["id"],
-                "decision": "approved" if finding["entity_type"] == "Internal Domain" else "rejected",
+                "decision": "approved"
+                if finding["entity_type"] == "Internal Domain"
+                else "rejected",
             },
         )
 

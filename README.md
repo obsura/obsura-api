@@ -45,6 +45,7 @@ Primary project documents:
 - [docs/product/NON_GOALS.md](docs/product/NON_GOALS.md)
 - [docs/architecture/STACK.md](docs/architecture/STACK.md)
 - [docs/architecture/TOOLING.md](docs/architecture/TOOLING.md)
+- [docs/architecture/CODE_STANDARDS.md](docs/architecture/CODE_STANDARDS.md)
 - [docs/operations/CICD.md](docs/operations/CICD.md)
 - [docs/legal/OPEN_SOURCE_POLICY.md](docs/legal/OPEN_SOURCE_POLICY.md)
 - [docs/legal/THIRD_PARTY_NOTICES.md](docs/legal/THIRD_PARTY_NOTICES.md)
@@ -91,6 +92,14 @@ tests/        behavior-focused API and service tests
 5. Run the API with `python -m obsura_api.main`.
 6. Run tests with `python -m pytest`.
 7. Regenerate API artifacts with `python -m obsura_api.tools.api_artifacts`.
+8. Install local hooks with `python -m pre_commit install`.
+
+Quality commands:
+
+- `python -m ruff format src tests`
+- `python -m ruff check src tests`
+- `python -m mypy`
+- `python -m pytest --cov=src/obsura_api`
 
 The default database is SQLite for local execution and tests. Production should
 use PostgreSQL as defined in

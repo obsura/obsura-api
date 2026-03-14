@@ -4,8 +4,8 @@ import json
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from obsura_api.app import create_app
 from obsura_api.core.settings import Settings
@@ -221,11 +221,7 @@ def test_image_transform_supports_padding_border_and_label_options(client) -> No
 
     assert response.status_code == 200
     transformed = _open_stored_image(client, response.json()["data"]["stored_output_path"])
-    left_border_pixels = {
-        transformed.getpixel((x, y))
-        for x in range(6, 9)
-        for y in range(8, 19)
-    }
+    left_border_pixels = {transformed.getpixel((x, y)) for x in range(6, 9) for y in range(8, 19)}
     assert (255, 0, 0) in left_border_pixels
     assert transformed.getpixel((12, 12)) == (0, 0, 0)
 

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
 from obsura_api.db.models import Job, JobFinding, JobOutput
+from obsura_api.domain.common import BoundingBox
 from obsura_api.domain.enums import (
     ContentType,
     FindingKind,
@@ -23,7 +24,6 @@ from obsura_api.domain.enums import (
     ReviewDecision,
     TransformationMode,
 )
-from obsura_api.domain.common import BoundingBox
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
     FindingRecord,
@@ -32,17 +32,15 @@ from obsura_api.domain.workflows import (
     ImageWorkflowManifest,
     ImageWorkflowResponse,
 )
-
 from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.privacy import sanitize_persisted_finding_metadata
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.providers.ocr import OCRBlock, OCRProvider
-from obsura_api.services.providers.pii import PIIDetector, NoOpPIIDetector
+from obsura_api.services.providers.pii import NoOpPIIDetector, PIIDetector
 from obsura_api.services.storage import StorageService
 from obsura_api.services.studio import StudioService
 from obsura_api.services.utils import hash_value, preview_value, summarize_findings
-
 
 SUPPORTED_IMAGE_FORMATS = {"BMP", "GIF", "JPEG", "PNG", "TIFF", "WEBP"}
 
@@ -203,8 +201,12 @@ class ImageWorkflowService:
         for finding in active_findings:
             if finding.region is None:
                 continue
-            rule = finding.transformation or default_transformation or TransformationRule(
-                mode=TransformationMode.BLUR,
+            rule = (
+                finding.transformation
+                or default_transformation
+                or TransformationRule(
+                    mode=TransformationMode.BLUR,
+                )
             )
             self._apply_region(image, finding, rule)
 
@@ -373,7 +375,8 @@ class ImageWorkflowService:
                         metadata={
                             "ocr_confidence": int(round(block.confidence * 100)),
                             "ocr_detection_source": text_finding.source.value,
-                            "ocr_text_hash": text_finding.matched_text_hash or hash_value(block.text),
+                            "ocr_text_hash": text_finding.matched_text_hash
+                            or hash_value(block.text),
                             "ocr_token_count": len(block.tokens),
                         },
                     ),

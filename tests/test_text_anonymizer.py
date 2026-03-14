@@ -9,7 +9,9 @@ from obsura_api.services.providers import text_anonymizer as anonymizer_module
 from obsura_api.services.providers.text_anonymizer import build_text_anonymizer
 
 
-def test_build_text_anonymizer_uses_native_backend_when_presidio_is_unavailable(monkeypatch) -> None:
+def test_build_text_anonymizer_uses_native_backend_when_presidio_is_unavailable(
+    monkeypatch,
+) -> None:
     def raising_presidio_backend():
         raise RuntimeError("missing package")
 
@@ -61,9 +63,12 @@ def test_native_text_anonymizer_hashes_with_deployment_salt() -> None:
     backend = build_text_anonymizer(settings)
 
     assert backend.hash_supported is True
-    assert backend.hash(text="secret", salt=settings.text_hash_salt or "") == hashlib.sha256(
-        b"0123456789abcdef:secret",
-    ).hexdigest()
+    assert (
+        backend.hash(text="secret", salt=settings.text_hash_salt or "")
+        == hashlib.sha256(
+            b"0123456789abcdef:secret",
+        ).hexdigest()
+    )
 
 
 def test_build_text_anonymizer_rejects_unknown_backend() -> None:

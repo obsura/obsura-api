@@ -17,7 +17,9 @@ def test_structured_analyze_returns_path_aware_findings(client) -> None:
 
     assert response.status_code == 200
     body = response.json()["data"]
-    email_finding = next(item for item in body["findings"] if item["entity_type"] == "EMAIL_ADDRESS")
+    email_finding = next(
+        item for item in body["findings"] if item["entity_type"] == "EMAIL_ADDRESS"
+    )
     assert email_finding["kind"] == "structured_field"
     assert email_finding["metadata"]["structured_path"] == "$.patient.email"
     assert email_finding["metadata"]["structured_path_tokens"] == ["s:patient", "s:email"]
@@ -47,7 +49,10 @@ def test_structured_transform_masks_nested_values(client) -> None:
     body = response.json()["data"]
     assert body["output_data"]["patient"]["email"] == "[EMAIL]"
     assert body["output_data"]["audit"][0]["token"] == "[REDACTED]"
-    assert {item["path"] for item in body["replacements"]} == {"$.patient.email", "$.audit[0].token"}
+    assert {item["path"] for item in body["replacements"]} == {
+        "$.patient.email",
+        "$.audit[0].token",
+    }
 
 
 def test_structured_review_and_transform_job_flow(client) -> None:
@@ -75,7 +80,9 @@ def test_structured_review_and_transform_job_flow(client) -> None:
             "decisions": [
                 {
                     "finding_id": finding["id"],
-                    "decision": "approved" if finding["entity_type"] == "EXACT_VALUE" else "rejected",
+                    "decision": "approved"
+                    if finding["entity_type"] == "EXACT_VALUE"
+                    else "rejected",
                 }
                 for finding in analysis["findings"]
             ]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from typing import cast
 
 from fastapi import Query, Request
 from sqlalchemy.orm import Session
@@ -15,7 +16,7 @@ from obsura_api.domain.common import PaginationParams
 def get_container(request: Request) -> AppContainer:
     """Return the shared application container."""
 
-    return request.app.state.container
+    return cast(AppContainer, request.app.state.container)
 
 
 def get_settings(request: Request) -> Settings:

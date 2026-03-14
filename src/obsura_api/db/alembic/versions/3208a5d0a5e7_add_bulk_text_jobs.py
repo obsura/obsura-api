@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "3208a5d0a5e7"
@@ -105,10 +105,14 @@ def upgrade() -> None:
             sa.ForeignKeyConstraint(["bulk_job_id"], ["bulk_jobs.id"]),
             sa.ForeignKeyConstraint(["job_id"], ["jobs.id"]),
             sa.PrimaryKeyConstraint("id"),
-            sa.UniqueConstraint("bulk_job_id", "item_index", name="uq_bulk_job_items_bulk_job_id_item_index"),
+            sa.UniqueConstraint(
+                "bulk_job_id", "item_index", name="uq_bulk_job_items_bulk_job_id_item_index"
+            ),
             sa.UniqueConstraint("job_id"),
         )
-    _create_index_if_missing(op.f("ix_bulk_job_items_bulk_job_id"), "bulk_job_items", ["bulk_job_id"])
+    _create_index_if_missing(
+        op.f("ix_bulk_job_items_bulk_job_id"), "bulk_job_items", ["bulk_job_id"]
+    )
     _create_index_if_missing(op.f("ix_bulk_job_items_job_id"), "bulk_job_items", ["job_id"])
 
 

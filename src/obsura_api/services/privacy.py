@@ -37,34 +37,38 @@ def sanitize_persisted_finding_metadata(metadata: dict[str, object] | None) -> d
 
     if not metadata:
         return {}
-    return {
-        key: value
-        for key, value in metadata.items()
-        if key in SAFE_FINDING_METADATA_KEYS
-    }
+    return {key: value for key, value in metadata.items() if key in SAFE_FINDING_METADATA_KEYS}
 
 
 def scrub_persisted_sensitive_data(session: Session) -> dict[str, int]:
     """Remove historically persisted sensitive source and output content."""
 
-    scrubbed_jobs = session.execute(
-        update(Job).values(
-            source_text=None,
-            source_file_path=None,
-        ),
-    ).rowcount or 0
-    scrubbed_outputs = session.execute(
-        update(JobOutput).values(
-            output_text=None,
-            output_file_path=None,
-        ),
-    ).rowcount or 0
+    scrubbed_jobs = (
+        session.execute(
+            update(Job).values(
+                source_text=None,
+                source_file_path=None,
+            ),
+        ).rowcount
+        or 0
+    )
+    scrubbed_outputs = (
+        session.execute(
+            update(JobOutput).values(
+                output_text=None,
+                output_file_path=None,
+            ),
+        ).rowcount
+        or 0
+    )
 
     scrubbed_findings = 0
     findings = session.query(JobFinding).all()
     for finding in findings:
         sanitized_metadata = sanitize_persisted_finding_metadata(finding.extra_data)
-        if finding.matched_text_preview is None and sanitized_metadata == (finding.extra_data or {}):
+        if finding.matched_text_preview is None and sanitized_metadata == (
+            finding.extra_data or {}
+        ):
             continue
         finding.matched_text_preview = None
         finding.extra_data = sanitized_metadata

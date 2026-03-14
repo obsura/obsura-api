@@ -1,1 +1,0 @@
-{"name":"Internal Host Entity","tags":["ops"],"description":"Protect private hostnames","transformation":{"semantic_label":"INTERNAL_HOST","mode":"semantic"},"detection_definitions":[{"kind":"exact","value":"srv-01.internal"}],"category":"infra"}

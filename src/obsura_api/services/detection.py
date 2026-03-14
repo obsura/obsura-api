@@ -22,11 +22,16 @@ from obsura_api.domain.enums import (
 from obsura_api.domain.pii import PIIDetectionOptions, merge_pii_detection_options
 from obsura_api.domain.studio import PatternMatcherDefinition
 from obsura_api.domain.transforms import TransformationRule
-from obsura_api.domain.workflows import FindingRecord, ManualTextSpan, TextAnalysisRequest, TextAnalysisResponse
+from obsura_api.domain.workflows import (
+    FindingRecord,
+    ManualTextSpan,
+    TextAnalysisRequest,
+    TextAnalysisResponse,
+)
 from obsura_api.services.privacy import sanitize_persisted_finding_metadata
+from obsura_api.services.providers.pii import DetectedPIIEntity, NoOpPIIDetector, PIIDetector
 from obsura_api.services.studio import StudioService
 from obsura_api.services.utils import hash_value, preview_value, summarize_findings, unique_ids
-from obsura_api.services.providers.pii import DetectedPIIEntity, NoOpPIIDetector, PIIDetector
 
 
 @dataclass(slots=True)
@@ -330,13 +335,15 @@ class TextDetectionService:
     ) -> tuple[list[object], list[object], TransformationRule | None, PIIDetectionOptions | None]:
         """Resolve reusable detection inputs for transient text analysis."""
 
-        patterns, entities, _, _, _, resolved_default, resolved_pii_detection = self.resolve_detection_context(
-            content_type=content_type,
-            pattern_ids=pattern_ids,
-            custom_entity_ids=custom_entity_ids,
-            configuration_ids=configuration_ids,
-            default_transformation=default_transformation,
-            pii_detection=pii_detection,
+        patterns, entities, _, _, _, resolved_default, resolved_pii_detection = (
+            self.resolve_detection_context(
+                content_type=content_type,
+                pattern_ids=pattern_ids,
+                custom_entity_ids=custom_entity_ids,
+                configuration_ids=configuration_ids,
+                default_transformation=default_transformation,
+                pii_detection=pii_detection,
+            )
         )
         return patterns, entities, resolved_default, resolved_pii_detection
 
@@ -367,7 +374,9 @@ class TextDetectionService:
             custom_entity_ids,
             *(config.custom_entity_ids for config in configurations),
         )
-        patterns = [item for item in self.studio.resolve_patterns(resolved_pattern_ids) if item.is_active]
+        patterns = [
+            item for item in self.studio.resolve_patterns(resolved_pattern_ids) if item.is_active
+        ]
         entities = [
             item
             for item in self.studio.resolve_custom_entities(resolved_custom_entity_ids)
@@ -505,15 +514,18 @@ class TextDetectionService:
         configurations: list[object],
     ) -> PIIDetectionOptions | None:
         configuration_options = [
-            self._configuration_pii_detection(configuration)
-            for configuration in configurations
+            self._configuration_pii_detection(configuration) for configuration in configurations
         ]
         resolved = merge_pii_detection_options(*configuration_options, request_pii_detection)
         if resolved is None:
             return None
 
         supported_languages = tuple(getattr(self.pii_detector, "supported_languages", ()) or ())
-        if resolved.language and supported_languages and resolved.language not in supported_languages:
+        if (
+            resolved.language
+            and supported_languages
+            and resolved.language not in supported_languages
+        ):
             supported = ", ".join(supported_languages)
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -531,7 +543,9 @@ class TextDetectionService:
         try:
             return PIIDetectionOptions.model_validate(raw_value)
         except ValidationError as exc:
-            configuration_name = getattr(configuration, "name", getattr(configuration, "id", "configuration"))
+            configuration_name = getattr(
+                configuration, "name", getattr(configuration, "id", "configuration")
+            )
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Configuration `{configuration_name}` has invalid `pii_detection` settings",

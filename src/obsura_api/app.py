@@ -5,18 +5,18 @@ from __future__ import annotations
 import logging
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image as PILImage
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from obsura_api import __version__
-from fastapi.exceptions import RequestValidationError
-from obsura_api.api.router import api_router
 from obsura_api.api.responses import (
     http_exception_handler,
     unhandled_exception_handler,
     validation_exception_handler,
 )
+from obsura_api.api.router import api_router
 from obsura_api.core.container import AppContainer
 from obsura_api.core.settings import Settings, get_settings
 from obsura_api.db import models as _models  # noqa: F401
@@ -27,12 +27,12 @@ from obsura_api.db.session import (
     verify_database_connection,
 )
 from obsura_api.domain.operational import ServiceRootInfo
+from obsura_api.services.privacy import scrub_persisted_sensitive_data
 from obsura_api.services.providers.documents import build_document_extractor
 from obsura_api.services.providers.faces import build_face_detector
 from obsura_api.services.providers.ocr import build_ocr_provider
 from obsura_api.services.providers.pii import build_pii_detector
 from obsura_api.services.providers.text_anonymizer import build_text_anonymizer
-from obsura_api.services.privacy import scrub_persisted_sensitive_data
 from obsura_api.services.storage import StorageService
 
 logger = logging.getLogger(__name__)

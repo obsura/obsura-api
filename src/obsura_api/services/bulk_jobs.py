@@ -15,7 +15,6 @@ from obsura_api.domain.bulk import (
     BulkJobRead,
     BulkJobReviewRequest,
     BulkJobSummaryRead,
-    BulkOperationItemResult,
     BulkReviewItemResult,
     BulkReviewResponse,
     BulkTextAnalyzeRequest,
@@ -35,7 +34,7 @@ from obsura_api.domain.jobs import JobReviewRequest
 from obsura_api.domain.workflows import TextTransformRequest
 from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import JobService
-from obsura_api.services.providers.pii import PIIDetector, NoOpPIIDetector
+from obsura_api.services.providers.pii import NoOpPIIDetector, PIIDetector
 from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
 from obsura_api.services.text_transformations import TextTransformationService
 from obsura_api.services.utils import summarize_findings
@@ -100,7 +99,9 @@ def resolve_parent_status_from_items(items: list[BulkJobItem]) -> BulkJobStatus:
     """Resolve the bulk job lifecycle status from current item states."""
 
     total_items = len(items)
-    failed_count = sum(1 for item in items if derive_bulk_item_status(item) is BulkJobItemStatus.FAILED)
+    failed_count = sum(
+        1 for item in items if derive_bulk_item_status(item) is BulkJobItemStatus.FAILED
+    )
     reviewed_item_count, transformed_item_count, _ = summarize_bulk_progress(items)
     successful_count = total_items - failed_count
 
@@ -283,7 +284,9 @@ class BulkJobService:
                 )
 
             item_status = (
-                BulkJobItemStatus.FAILED if error_message is not None else BulkJobItemStatus.SUCCEEDED
+                BulkJobItemStatus.FAILED
+                if error_message is not None
+                else BulkJobItemStatus.SUCCEEDED
             )
             bulk_item = BulkJobItem(
                 bulk_job=bulk_job,
@@ -327,7 +330,9 @@ class BulkJobService:
         bulk_job = self._load_bulk_job_with_relations(bulk_job_id)
         return bulk_job_to_schema(bulk_job)
 
-    def review_bulk_job(self, bulk_job_id: str, payload: BulkJobReviewRequest) -> BulkReviewResponse:
+    def review_bulk_job(
+        self, bulk_job_id: str, payload: BulkJobReviewRequest
+    ) -> BulkReviewResponse:
         bulk_job = self._load_bulk_job_with_relations(bulk_job_id)
         snapshots = self._snapshot_items(bulk_job)
         entries_by_job_id = {entry.job_id: entry for entry in payload.jobs}
@@ -488,7 +493,9 @@ class BulkJobService:
         failure_count: int,
         skipped_count: int,
     ) -> BulkReviewResponse:
-        reviewed_item_count, transformed_item_count, output_count = summarize_bulk_progress(bulk_job.items)
+        reviewed_item_count, transformed_item_count, output_count = summarize_bulk_progress(
+            bulk_job.items
+        )
         return BulkReviewResponse(
             bulk_id=bulk_job.id,
             action=BulkOperationKind.REVIEW,
@@ -511,7 +518,9 @@ class BulkJobService:
         success_count: int,
         failure_count: int,
     ) -> BulkTextTransformResponse:
-        reviewed_item_count, transformed_item_count, output_count = summarize_bulk_progress(bulk_job.items)
+        reviewed_item_count, transformed_item_count, output_count = summarize_bulk_progress(
+            bulk_job.items
+        )
         return BulkTextTransformResponse(
             bulk_id=bulk_job.id,
             action=BulkOperationKind.TRANSFORM,
@@ -666,7 +675,9 @@ class BulkJobService:
         overrides_by_job_id: dict[str, object],
     ) -> None:
         allowed_job_ids = {snapshot.job_id for snapshot in snapshots if snapshot.job_id is not None}
-        invalid_job_ids = [job_id for job_id in overrides_by_job_id if job_id not in allowed_job_ids]
+        invalid_job_ids = [
+            job_id for job_id in overrides_by_job_id if job_id not in allowed_job_ids
+        ]
         if invalid_job_ids:
             invalid_label = ", ".join(invalid_job_ids)
             raise HTTPException(

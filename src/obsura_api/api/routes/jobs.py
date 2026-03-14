@@ -49,4 +49,6 @@ def review_job(
 ) -> ApiResponse[JobRead]:
     """Apply review decisions to findings within a persisted job."""
 
-    return success_response(JobService(session, storage=container.storage).review_job(str(job_id), payload))
+    return success_response(
+        JobService(session, storage=container.storage).review_job(str(job_id), payload)
+    )
