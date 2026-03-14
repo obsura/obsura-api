@@ -71,6 +71,7 @@ class FindingSource(str, Enum):
 
 class FindingKind(str, Enum):
     TEXT_SPAN = "text_span"
+    STRUCTURED_FIELD = "structured_field"
     IMAGE_REGION = "image_region"
     FACE_REGION = "face_region"
     FACE_SUBREGION = "face_subregion"

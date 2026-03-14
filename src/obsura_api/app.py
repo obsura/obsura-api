@@ -63,6 +63,10 @@ OPENAPI_TAGS = [
         "description": "Review-first text detection and transformation workflows for pasted text, logs, and structured technical content.",
     },
     {
+        "name": "structured-workflows",
+        "description": "Review-first structured JSON workflows for nested payloads, records, and semi-structured application data.",
+    },
+    {
         "name": "image-workflows",
         "description": "Screenshot and image-region workflows for manual regions, face-protection flows, and generated outputs.",
     },
@@ -76,6 +80,7 @@ The API supports:
 - persisted bulk text submissions that group many reviewable child jobs
 - reviewable jobs and run history
 - text-first and screenshot-first sanitization workflows
+- structured JSON analyze/review/transform workflows
 - transformation behavior beyond plain placeholder replacement
 - image-region protection flows for blur, pixelation, masks, and overlays
 

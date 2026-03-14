@@ -161,6 +161,24 @@ Frontend guidance:
 - use `pii_detection` when the operator needs language, entity scope, or context
   tuning for Presidio-backed detection
 
+### Structured Workflows
+
+Main endpoints:
+
+- `POST /api/v1/workflows/structured/analyze`
+- `POST /api/v1/workflows/structured/transform`
+- `POST /api/v1/workflows/structured/transform-job`
+
+Frontend guidance:
+
+- these endpoints accept JSON object/array payloads under `data`
+- findings are attached to leaf-string values inside the structure, not to the
+  whole document as one text blob
+- use `finding.metadata.structured_path` to show the field location in review UI
+- for persisted structured jobs, resend `data` to `transform-job`; raw structured
+  source content is not retained by the backend
+- structured workflows use the same review endpoint family under `/api/v1/jobs/{job_id}/review`
+
 ### Image Workflows
 
 Main endpoints:
@@ -212,6 +230,7 @@ Frontend should model the main workflows like this:
 This applies to:
 
 - single text flows
+- structured JSON flows
 - image/screenshot flows
 - bulk text flows
 
@@ -280,6 +299,8 @@ Where it can be used:
 
 - `POST /api/v1/workflows/text/analyze`
 - `POST /api/v1/workflows/text/analyze-transform`
+- `POST /api/v1/workflows/structured/analyze`
+- `POST /api/v1/workflows/structured/transform`
 - `POST /api/v1/workflows/images/analyze` inside `manifest_json`
 - `POST /api/v1/workflows/images/transform` inside `manifest_json`
 - `POST /api/v1/bulk/text/analyze`
@@ -370,6 +391,7 @@ Use one typed API client layer with resource grouping similar to the backend:
 - `studioApi`
 - `jobsApi`
 - `textWorkflowsApi`
+- `structuredWorkflowsApi`
 - `imageWorkflowsApi`
 - `bulkJobsApi`
 
@@ -388,6 +410,7 @@ Recommended type groups:
 - finding/review types
 - job/output types
 - text workflow request/response types
+- structured workflow request/response types
 - image workflow request/response types
 - bulk request/response types
 
@@ -409,6 +432,14 @@ Recommended type groups:
 4. submit `POST /api/v1/workflows/images/transform-job`
 5. use `media_url` when present to preview the generated output
 
+### Structured JSON Flow
+
+1. submit `POST /api/v1/workflows/structured/analyze`
+2. render findings grouped by `metadata.structured_path`
+3. submit `POST /api/v1/jobs/{job_id}/review`
+4. submit `POST /api/v1/workflows/structured/transform-job` with the latest `data`
+5. render `output_data` as sanitized JSON
+
 ### Bulk Text Flow
 
 1. submit `POST /api/v1/bulk/text/analyze`
@@ -427,6 +458,9 @@ Current runtime limits can be configured, but frontend should assume these exist
 - bulk text item count limit
 - bulk text per-item character limit
 - bulk text total character limit
+- structured payload node limit
+- structured payload depth limit
+- structured payload total character limit
 
 Frontend guidance:
 
@@ -462,6 +496,7 @@ Frontend can confidently build against:
 - studio asset CRUD/search
 - persisted jobs and review
 - text analyze/review/transform
+- structured analyze/review/transform-job
 - image analyze/review/transform-job
 - bulk text analyze/review/transform
 - readiness/version endpoints
@@ -474,6 +509,7 @@ Do not design frontend dependencies on these yet:
 - bulk images
 - bulk analyze-transform
 - PDF/document workflows
+- CSV/DataFrame structured workflows
 - auth and workspace isolation
 - background job orchestration
 - export/reporting systems

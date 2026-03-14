@@ -260,6 +260,50 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
         },
         "persist_job": False,
     },
+    ("POST", "/api/v1/workflows/structured/analyze"): {
+        "title": "Customer profile review",
+        "data": {
+            "customer": {
+                "email": "john@example.com",
+                "id": "CUST-123",
+            },
+            "contacts": [
+                {
+                    "phone": "+1 202-555-0123",
+                }
+            ],
+        },
+        "apply_builtins": True,
+        "persist_job": True,
+    },
+    ("POST", "/api/v1/workflows/structured/transform"): {
+        "title": "Structured one-shot export",
+        "data": {
+            "customer": {
+                "email": "john@example.com",
+                "token": "secret",
+            }
+        },
+        "exact_values": ["secret"],
+        "persist_job": False,
+    },
+    ("POST", "/api/v1/workflows/structured/transform-job"): {
+        "job_id": "{{jobId}}",
+        "data": {
+            "customer": {
+                "email": "john@example.com",
+                "id": "CUST-123",
+            }
+        },
+        "finding_overrides": [
+            {
+                "finding_id": "{{findingId}}",
+                "decision": "approved",
+            }
+        ],
+        "include_pending": False,
+        "persist_output": True,
+    },
     ("POST", "/api/v1/workflows/images/transform-job"): {
         "job_id": "{{jobId}}",
         "finding_overrides": [
@@ -446,6 +490,21 @@ REQUEST_EXTRACTORS: dict[tuple[str, str], list[dict[str, Any]]] = {
     ],
     ("POST", "/api/v1/workflows/text/analyze-transform"): [
         {"variable": "jobId", "paths": [["data", "job_id"]]},
+    ],
+    ("POST", "/api/v1/workflows/structured/analyze"): [
+        {"variable": "jobId", "paths": [["data", "job_id"]]},
+        {"variable": "findingId", "paths": [["data", "findings", 0, "id"]]},
+        {"variable": "findingIdsJson", "paths": [["data", "findings", "__collect__", "id"]]},
+    ],
+    ("POST", "/api/v1/workflows/structured/transform"): [
+        {"variable": "jobId", "paths": [["data", "job_id"]]},
+        {"variable": "findingId", "paths": [["data", "findings", 0, "id"]]},
+        {"variable": "findingIdsJson", "paths": [["data", "findings", "__collect__", "id"]]},
+    ],
+    ("POST", "/api/v1/workflows/structured/transform-job"): [
+        {"variable": "jobId", "paths": [["data", "job_id"]]},
+        {"variable": "findingId", "paths": [["data", "findings", 0, "id"]]},
+        {"variable": "findingIdsJson", "paths": [["data", "findings", "__collect__", "id"]]},
     ],
     ("POST", "/api/v1/workflows/images/analyze"): [
         {"variable": "jobId", "paths": [["data", "job_id"]]},
@@ -697,10 +756,11 @@ def build_postman_collection(openapi_document: dict[str, Any]) -> dict[str, Any]
                 "2. Run create endpoints for patterns, entities, or configurations.\n"
                 "3. The collection automatically captures IDs such as `patternId`, "
                 "`configurationId`, `bulkId`, `jobId`, and `findingId` from JSON responses.\n"
-                "4. Follow the text or image workflow requests in order without manually copying IDs.\n"
+                "4. Follow the text, structured, or image workflow requests in order without manually copying IDs.\n"
                 "5. Bulk text requests follow the review-first order: analyze -> get child job -> review -> transform.\n"
                 "6. Bulk text responses keep parent bulk state and per-item outcomes separate.\n"
-                "7. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing."
+                "7. Structured workflow examples include nested JSON payloads for field-level review.\n"
+                "8. Image workflow examples include OCR-ready `manifest_json` payloads for screenshot testing."
             ),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "_postman_id": "obsura-api-collection",

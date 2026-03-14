@@ -12,6 +12,9 @@ SAFE_FINDING_METADATA_KEYS = {
     "ocr_detection_source",
     "ocr_text_hash",
     "ocr_token_count",
+    "structured_path",
+    "structured_path_tokens",
+    "structured_value_kind",
 }
 
 
