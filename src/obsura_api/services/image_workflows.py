@@ -48,6 +48,7 @@ from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.providers.ocr import OCRBlock, OCRProvider
 from obsura_api.services.providers.pii import NoOpPIIDetector, PIIDetector
 from obsura_api.services.sharing import (
+    build_image_artifact,
     build_image_share_policy,
     resolve_image_transform_for_output_intent,
     share_metadata,
@@ -155,10 +156,17 @@ class ImageWorkflowService:
         source_file_path = None
         job_id = None
         stored_output = self.storage.save_image(image)
+        media_url = self.storage.media_url_for(stored_output)
         share_policy = build_image_share_policy(
             manifest.output_intent,
             security_rules_enforced=security_rules_enforced,
             auto_adjusted=auto_adjusted,
+        )
+        artifact = build_image_artifact(
+            output_intent=manifest.output_intent,
+            share_policy=share_policy,
+            output_file_path=stored_output,
+            media_url=media_url,
         )
         if manifest.persist_job:
             if self._should_persist_source_file(manifest):
@@ -177,6 +185,7 @@ class ImageWorkflowService:
                 output_file_path=str(stored_output),
                 output_intent=manifest.output_intent,
                 share_policy=share_policy,
+                artifact=artifact,
             )
 
         return ImageWorkflowResponse(
@@ -184,9 +193,10 @@ class ImageWorkflowService:
             findings=findings,
             stored_input_path=None,
             stored_output_path=stored_output,
-            media_url=self.storage.media_url_for(stored_output),
+            media_url=media_url,
             output_intent=manifest.output_intent,
             share_policy=share_policy,
+            artifacts=[artifact],
             summary=summarize_findings(findings),
         )
 
@@ -238,10 +248,17 @@ class ImageWorkflowService:
             self._apply_region(image, finding, resolved.rule)
 
         stored_output = self.storage.save_image(image, stem=f"{job.id}-reviewed")
+        media_url = self.storage.media_url_for(stored_output)
         share_policy = build_image_share_policy(
             request.output_intent,
             security_rules_enforced=security_rules_enforced,
             auto_adjusted=auto_adjusted,
+        )
+        artifact = build_image_artifact(
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+            output_file_path=stored_output,
+            media_url=media_url,
         )
         if request.persist_output:
             job.status = JobStatus.TRANSFORMED
@@ -253,7 +270,7 @@ class ImageWorkflowService:
                 extra_data={
                     "source_output": "reviewed-job-transform",
                     "applied_finding_count": len(active_findings),
-                    **share_metadata(request.output_intent, share_policy),
+                    **share_metadata(request.output_intent, share_policy, artifact),
                 },
             )
             self.session.add(output)
@@ -264,9 +281,10 @@ class ImageWorkflowService:
             findings=findings,
             stored_input_path=None,
             stored_output_path=stored_output,
-            media_url=self.storage.media_url_for(stored_output),
+            media_url=media_url,
             output_intent=request.output_intent,
             share_policy=share_policy,
+            artifacts=[artifact],
             summary=summarize_findings(findings),
         )
 
@@ -791,6 +809,7 @@ class ImageWorkflowService:
         output_file_path: str | None = None,
         output_intent=None,
         share_policy: SharePolicySummary | None = None,
+        artifact=None,
     ) -> str:
         job = Job(
             title=title,
@@ -833,7 +852,7 @@ class ImageWorkflowService:
                 content_type=job.content_type,
                 output_file_path=output_file_path,
                 extra_data=(
-                    share_metadata(output_intent, share_policy)
+                    share_metadata(output_intent, share_policy, artifact)
                     if output_intent is not None and share_policy is not None
                     else {}
                 ),

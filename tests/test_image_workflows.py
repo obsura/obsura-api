@@ -412,6 +412,10 @@ def test_safe_share_image_transform_upgrades_implicit_ocr_blur_to_overlay(client
     assert body["output_intent"] == "safe_share"
     assert body["share_policy"]["security_rules_enforced"] is True
     assert body["share_policy"]["auto_adjusted"] is True
+    assert body["artifacts"][0]["name"] == "output_image"
+    assert body["artifacts"][0]["channel"] == "media"
+    assert body["artifacts"][0]["share_ready"] is True
+    assert body["artifacts"][0]["media_url"] == body["media_url"]
     transformed = _open_stored_image(client, body["stored_output_path"])
     assert transformed.getpixel((8, 5)) == (17, 17, 17)
 

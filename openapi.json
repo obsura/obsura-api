@@ -4268,6 +4268,13 @@
               }
             ]
           },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
           "summary": {
             "additionalProperties": {
               "type": "integer"
@@ -5175,6 +5182,13 @@
               }
             ]
           },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
           "summary": {
             "additionalProperties": {
               "type": "integer"
@@ -5574,6 +5588,13 @@
               }
             ]
           },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
           "summary": {
             "additionalProperties": {
               "type": "integer"
@@ -5647,6 +5668,16 @@
             ],
             "title": "Media Url",
             "description": "Media URL derived from the storage-relative output reference."
+          },
+          "artifact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShareArtifactSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "metadata": {
             "additionalProperties": true,
@@ -6620,6 +6651,102 @@
         "title": "ServiceVersionInfo",
         "description": "Runtime version and capability metadata."
       },
+      "ShareArtifactChannel": {
+        "type": "string",
+        "enum": [
+          "inline",
+          "download",
+          "media"
+        ],
+        "title": "ShareArtifactChannel"
+      },
+      "ShareArtifactKind": {
+        "type": "string",
+        "enum": [
+          "text",
+          "json",
+          "table_preview",
+          "csv_export",
+          "image"
+        ],
+        "title": "ShareArtifactKind"
+      },
+      "ShareArtifactSummary": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ShareArtifactKind"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ShareArtifactChannel"
+          },
+          "intended_use": {
+            "$ref": "#/components/schemas/OutputIntent"
+          },
+          "share_ready": {
+            "type": "boolean",
+            "title": "Share Ready",
+            "default": false
+          },
+          "primary": {
+            "type": "boolean",
+            "title": "Primary",
+            "default": false
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "output_file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output File Path"
+          },
+          "media_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Url"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "channel",
+          "intended_use"
+        ],
+        "title": "ShareArtifactSummary",
+        "description": "One explicit artifact produced for preview or sharing."
+      },
       "SharePolicySummary": {
         "properties": {
           "output_intent": {
@@ -7056,6 +7183,13 @@
               }
             ]
           },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
           "summary": {
             "additionalProperties": {
               "type": "integer"
@@ -7321,6 +7455,13 @@
                 "type": "null"
               }
             ]
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
           },
           "summary": {
             "additionalProperties": {

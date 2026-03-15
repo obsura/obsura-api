@@ -949,7 +949,17 @@ def generate_artifacts(output_directory: Path | None = None) -> tuple[Path, Path
     target_directory = output_directory or Path.cwd()
     target_directory.mkdir(parents=True, exist_ok=True)
 
-    app = create_app(get_settings().model_copy(update={"auto_create_schema": True}))
+    settings = get_settings().model_copy(
+        update={
+            "auto_create_schema": True,
+            "database_url": "sqlite:///./data/obsura.db",
+            "ocr_backend": "noop",
+            "face_detector_backend": "noop",
+            "pii_backend": "noop",
+            "text_anonymizer_backend": "native",
+        }
+    )
+    app = create_app(settings)
     openapi_document = app.openapi()
     postman_collection = build_postman_collection(openapi_document)
 

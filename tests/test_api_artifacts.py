@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from obsura_api.app import create_app
-from obsura_api.core.settings import Settings
-from obsura_api.tools.api_artifacts import build_postman_collection
+from obsura_api.core.settings import Settings, get_settings
+from obsura_api.tools.api_artifacts import build_postman_collection, generate_artifacts
 
 
 def test_postman_collection_uses_chained_variables() -> None:
@@ -133,3 +133,21 @@ def test_postman_collection_uses_chained_variables() -> None:
     assert "{{jobId}}" in document_transform_manifest_field["value"]
     assert "{{findingId}}" in document_transform_manifest_field["value"]
     assert '"output_intent": "safe_share"' in document_transform_manifest_field["value"]
+
+
+def test_generate_artifacts_ignores_heavy_runtime_backends(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://invalid:invalid@localhost/obsura")
+    monkeypatch.setenv("OBSURA_OCR_BACKEND", "tesseract")
+    monkeypatch.setenv("OBSURA_FACE_DETECTOR_BACKEND", "opencv")
+    monkeypatch.setenv("OBSURA_PII_BACKEND", "presidio")
+    get_settings.cache_clear()
+
+    openapi_path, postman_path = generate_artifacts(tmp_path)
+
+    assert openapi_path.exists()
+    assert postman_path.exists()
+    assert '"ShareArtifactSummary"' in openapi_path.read_text(encoding="utf-8")
+    get_settings.cache_clear()

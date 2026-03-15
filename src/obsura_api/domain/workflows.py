@@ -13,7 +13,7 @@ from obsura_api.domain.enums import (
     ReviewDecision,
 )
 from obsura_api.domain.pii import PIIDetectionOptions
-from obsura_api.domain.sharing import SharePolicySummary
+from obsura_api.domain.sharing import ShareArtifactSummary, SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 
 
@@ -154,6 +154,7 @@ class TextTransformResponse(BaseModel):
     replacements: list[ReplacementRecord]
     output_intent: OutputIntent = OutputIntent.PREVIEW
     share_policy: SharePolicySummary | None = None
+    artifacts: list[ShareArtifactSummary] = Field(default_factory=list)
     summary: dict[str, int]
 
 
@@ -228,6 +229,7 @@ class ImageWorkflowResponse(BaseModel):
     )
     output_intent: OutputIntent | None = None
     share_policy: SharePolicySummary | None = None
+    artifacts: list[ShareArtifactSummary] = Field(default_factory=list)
     summary: dict[str, int]
 
 

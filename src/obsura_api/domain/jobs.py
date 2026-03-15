@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from obsura_api.domain.common import MetadataMap, TimestampedModel, UuidReference
 from obsura_api.domain.enums import ContentType, JobStatus, ReviewDecision
+from obsura_api.domain.sharing import ShareArtifactSummary
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingRecord
 
@@ -24,6 +25,7 @@ class JobOutputRecord(TimestampedModel):
         default=None,
         description="Media URL derived from the storage-relative output reference.",
     )
+    artifact: ShareArtifactSummary | None = None
     metadata: MetadataMap = Field(default_factory=dict)
 
 

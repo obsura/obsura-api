@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from obsura_api.domain.common import UuidReference
 from obsura_api.domain.enums import ContentType, OutputIntent
 from obsura_api.domain.pii import PIIDetectionOptions
-from obsura_api.domain.sharing import SharePolicySummary
+from obsura_api.domain.sharing import ShareArtifactSummary, SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingOverride, FindingRecord
 
@@ -73,6 +73,7 @@ class CSVWorkflowResponse(BaseModel):
     replacements: list[CSVReplacementRecord] = Field(default_factory=list)
     output_intent: OutputIntent | None = None
     share_policy: SharePolicySummary | None = None
+    artifacts: list[ShareArtifactSummary] = Field(default_factory=list)
     summary: dict[str, int]
 
 

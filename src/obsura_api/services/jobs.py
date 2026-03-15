@@ -17,6 +17,7 @@ from obsura_api.domain.errors import NotFoundError
 from obsura_api.domain.jobs import JobOutputRecord, JobRead, JobReviewRequest
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingRecord
+from obsura_api.services.sharing import artifact_from_metadata
 from obsura_api.services.storage import StorageService
 from obsura_api.services.utils import summarize_findings
 
@@ -67,6 +68,11 @@ def output_to_schema(
         output_text=output.output_text,
         output_file_path=output_file_path,
         media_url=media_url,
+        artifact=artifact_from_metadata(
+            output.extra_data,
+            output_file_path=output_file_path,
+            media_url=media_url,
+        ),
         metadata=output.extra_data,
     )
 

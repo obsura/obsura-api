@@ -45,6 +45,11 @@ def test_csv_transform_masks_cells_and_escapes_formula_export(client) -> None:
     assert body["formula_escape_count"] == 1
     assert body["summary"]["replacement_count"] == 2
     assert body["summary"]["formula_escape_count"] == 1
+    assert body["artifacts"][0]["name"] == "output_rows"
+    assert body["artifacts"][0]["share_ready"] is False
+    assert body["artifacts"][1]["name"] == "output_csv"
+    assert body["artifacts"][1]["channel"] == "download"
+    assert body["artifacts"][1]["share_ready"] is True
 
 
 def test_csv_review_and_transform_job_flow(client) -> None:
@@ -83,6 +88,8 @@ def test_csv_review_and_transform_job_flow(client) -> None:
     transformed = transform_response.json()["data"]
     assert "[EMAIL]" in transformed["output_csv"]
     assert "[REDACTED]" in transformed["output_csv"]
+    assert transformed["artifacts"][0]["name"] == "output_rows"
+    assert transformed["artifacts"][1]["name"] == "output_csv"
 
     job_response = client.get(f"/api/v1/jobs/{job_id}")
     assert job_response.status_code == 200
@@ -91,6 +98,8 @@ def test_csv_review_and_transform_job_flow(client) -> None:
     assert job["source_text"] is None
     assert job["outputs"][0]["output_text"] is None
     assert job["outputs"][0]["metadata"]["formula_escape_count"] == 0
+    assert job["outputs"][0]["artifact"]["name"] == "output_csv"
+    assert job["outputs"][0]["artifact"]["channel"] == "download"
 
 
 def test_csv_transform_job_rejects_changed_cell_value(client) -> None:

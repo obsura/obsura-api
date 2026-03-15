@@ -37,7 +37,11 @@ from obsura_api.services.providers.documents import (
 )
 from obsura_api.services.providers.pii import NoOpPIIDetector, PIIDetector
 from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
-from obsura_api.services.sharing import build_text_share_policy, share_metadata
+from obsura_api.services.sharing import (
+    build_document_artifact,
+    build_text_share_policy,
+    share_metadata,
+)
 from obsura_api.services.text_transformations import TextTransformationService
 from obsura_api.services.utils import hash_value, summarize_findings
 
@@ -146,6 +150,10 @@ class DocumentWorkflowService:
             validate_page_hash=False,
         )
         share_policy = build_text_share_policy(manifest.output_intent)
+        artifact = build_document_artifact(
+            output_intent=manifest.output_intent,
+            share_policy=share_policy,
+        )
         if job_id is not None:
             self._persist_document_output(
                 job_id=job_id,
@@ -154,6 +162,7 @@ class DocumentWorkflowService:
                 replacement_count=len(replacements),
                 output_intent=manifest.output_intent,
                 share_policy=share_policy,
+                artifact=artifact,
             )
         return DocumentWorkflowResponse(
             job_id=job_id,
@@ -165,6 +174,7 @@ class DocumentWorkflowService:
             replacements=replacements,
             output_intent=manifest.output_intent,
             share_policy=share_policy,
+            artifacts=[artifact],
             summary=self._transform_summary(replacements),
         )
 
@@ -189,6 +199,10 @@ class DocumentWorkflowService:
 
         findings = [finding_to_schema(item) for item in job.findings]
         share_policy = build_text_share_policy(request.output_intent)
+        artifact = build_document_artifact(
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+        )
         pages, output_text, replacements = self._apply_document_findings(
             pages=document.pages,
             findings=findings,
@@ -204,6 +218,7 @@ class DocumentWorkflowService:
                 replacement_count=len(replacements),
                 output_intent=request.output_intent,
                 share_policy=share_policy,
+                artifact=artifact,
             )
         return DocumentWorkflowResponse(
             job_id=job.id,
@@ -215,6 +230,7 @@ class DocumentWorkflowService:
             replacements=replacements,
             output_intent=request.output_intent,
             share_policy=share_policy,
+            artifacts=[artifact],
             summary=self._transform_summary(replacements),
         )
 
@@ -425,6 +441,7 @@ class DocumentWorkflowService:
         replacement_count: int,
         output_intent,
         share_policy,
+        artifact,
     ) -> None:
         job = self.session.get(Job, job_id)
         if job is None:
@@ -439,7 +456,7 @@ class DocumentWorkflowService:
                 "output_hash": hash_value(output_text),
                 "page_count": page_count,
                 "replacement_count": replacement_count,
-                **share_metadata(output_intent, share_policy),
+                **share_metadata(output_intent, share_policy, artifact),
             },
         )
         self.session.add(output)

@@ -35,7 +35,11 @@ from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.providers.pii import NoOpPIIDetector, PIIDetector
 from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
-from obsura_api.services.sharing import build_text_share_policy, share_metadata
+from obsura_api.services.sharing import (
+    build_structured_artifact,
+    build_text_share_policy,
+    share_metadata,
+)
 from obsura_api.services.text_transformations import TextTransformationService
 from obsura_api.services.utils import hash_value, summarize_findings
 
@@ -136,6 +140,10 @@ class StructuredWorkflowService:
             ),
         )
         share_policy = build_text_share_policy(request.output_intent)
+        artifact = build_structured_artifact(
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+        )
         output_data, replacements = self._apply_structured_findings(
             data=request.data,
             findings=analysis.findings,
@@ -149,6 +157,7 @@ class StructuredWorkflowService:
                 replacement_count=len(replacements),
                 output_intent=request.output_intent,
                 share_policy=share_policy,
+                artifact=artifact,
             )
         return StructuredWorkflowResponse(
             job_id=analysis.job_id,
@@ -157,6 +166,7 @@ class StructuredWorkflowService:
             replacements=replacements,
             output_intent=request.output_intent,
             share_policy=share_policy,
+            artifacts=[artifact],
             summary=self._transform_summary(replacements),
         )
 
@@ -174,6 +184,10 @@ class StructuredWorkflowService:
 
         findings = [finding_to_schema(item) for item in job.findings]
         share_policy = build_text_share_policy(request.output_intent)
+        artifact = build_structured_artifact(
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+        )
         output_data, replacements = self._apply_structured_findings(
             data=request.data,
             findings=findings,
@@ -187,6 +201,7 @@ class StructuredWorkflowService:
                 replacement_count=len(replacements),
                 output_intent=request.output_intent,
                 share_policy=share_policy,
+                artifact=artifact,
             )
         return StructuredWorkflowResponse(
             job_id=job.id,
@@ -195,6 +210,7 @@ class StructuredWorkflowService:
             replacements=replacements,
             output_intent=request.output_intent,
             share_policy=share_policy,
+            artifacts=[artifact],
             summary=self._transform_summary(replacements),
         )
 
@@ -479,6 +495,7 @@ class StructuredWorkflowService:
         replacement_count: int,
         output_intent,
         share_policy: SharePolicySummary,
+        artifact,
     ) -> None:
         job = self.session.get(Job, job_id)
         if job is None:
@@ -495,7 +512,7 @@ class StructuredWorkflowService:
                 "replacement_count": replacement_count,
                 "output_hash": hash_value(output_json),
                 "structured_root_type": "array" if isinstance(output_data, list) else "object",
-                **share_metadata(output_intent, share_policy),
+                **share_metadata(output_intent, share_policy, artifact),
             },
         )
         self.session.add(output)

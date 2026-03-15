@@ -19,7 +19,7 @@ from obsura_api.domain.workflows import (
     TextTransformResponse,
 )
 from obsura_api.services.detection import TextDetectionService
-from obsura_api.services.sharing import build_text_share_policy
+from obsura_api.services.sharing import build_text_artifact, build_text_share_policy
 from obsura_api.services.text_transformations import TextTransformationService
 
 router = APIRouter(prefix="/workflows/text", tags=["text-workflows"])
@@ -91,6 +91,10 @@ def analyze_and_transform_text(
         default_transformation=payload.default_transformation,
     )
     share_policy = build_text_share_policy(payload.output_intent)
+    artifact = build_text_artifact(
+        output_intent=payload.output_intent,
+        share_policy=share_policy,
+    )
     if analysis.job_id:
         transformer.persist_text_output(
             job_id=analysis.job_id,
@@ -106,6 +110,7 @@ def analyze_and_transform_text(
             replacements=replacements,
             output_intent=payload.output_intent,
             share_policy=share_policy,
+            artifacts=[artifact],
             summary={"replacement_count": len(replacements)},
         ),
     )

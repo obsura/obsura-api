@@ -46,6 +46,20 @@ class OutputIntent(str, Enum):
     SAFE_SHARE = "safe_share"
 
 
+class ShareArtifactKind(str, Enum):
+    TEXT = "text"
+    JSON = "json"
+    TABLE_PREVIEW = "table_preview"
+    CSV_EXPORT = "csv_export"
+    IMAGE = "image"
+
+
+class ShareArtifactChannel(str, Enum):
+    INLINE = "inline"
+    DOWNLOAD = "download"
+    MEDIA = "media"
+
+
 class OverlayShape(str, Enum):
     RECTANGLE = "rectangle"
     ROUNDED_RECTANGLE = "rounded_rectangle"
