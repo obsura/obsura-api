@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from obsura_api.domain.common import ApiError, ApiResponse, PaginationMeta
+from obsura_api.domain.errors import AppError
 
 logger = logging.getLogger(__name__)
 SENSITIVE_DETAIL_KEYS = {
@@ -25,6 +26,13 @@ SENSITIVE_DETAIL_KEYS = {
     "structured_data",
     "text",
 }
+
+
+def _status_name(status_code: int) -> str:
+    member = HTTPStatus._value2member_map_.get(status_code)
+    if member is None:
+        return "http_error"
+    return member.name.lower()
 
 
 def _sanitize_details(value: Any) -> Any:
@@ -91,18 +99,25 @@ def http_exception_handler(
     """Return FastAPI HTTP exceptions in the unified error envelope."""
 
     _ = request
-    status_name = (
-        HTTPStatus(exc.status_code).name.lower()
-        if exc.status_code in HTTPStatus._value2member_map_
-        else "http_error"
-    )
     details = exc.detail if isinstance(exc.detail, (list, dict)) else None
     message = exc.detail if isinstance(exc.detail, str) else "Request failed"
     return error_response(
         status_code=exc.status_code,
-        code=status_name,
+        code=_status_name(exc.status_code),
         message=message,
         details=details,
+    )
+
+
+def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """Return native application errors in the unified error envelope."""
+
+    _ = request
+    return error_response(
+        status_code=exc.status_code,
+        code=exc.code,
+        message=exc.message,
+        details=exc.details,
     )
 
 

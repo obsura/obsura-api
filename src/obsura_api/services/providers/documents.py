@@ -6,10 +6,14 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import TYPE_CHECKING, Protocol
 
-from fastapi import HTTPException, status
-
 if TYPE_CHECKING:
     from obsura_api.core.settings import Settings
+
+from obsura_api.domain.errors import (
+    BadRequestError,
+    PayloadTooLargeError,
+    UnprocessableContentError,
+)
 
 
 @dataclass(slots=True)
@@ -83,30 +87,20 @@ class PypdfDocumentExtractor:
 
     def extract_pdf(self, pdf_bytes: bytes) -> ExtractedDocument:
         if not pdf_bytes.startswith(b"%PDF-"):
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded file is not a valid PDF document",
-            )
+            raise BadRequestError("Uploaded file is not a valid PDF document")
 
         try:
             reader = self.pdf_reader_class(BytesIO(pdf_bytes), strict=True)
         except self.pdf_read_error as exc:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded PDF could not be parsed safely",
-            ) from exc
+            raise BadRequestError("Uploaded PDF could not be parsed safely") from exc
 
         if reader.is_encrypted:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Encrypted PDF documents are not supported",
-            )
+            raise BadRequestError("Encrypted PDF documents are not supported")
 
         page_count = len(reader.pages)
         if page_count > self.max_pages:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(f"PDF exceeds the configured maximum page count of {self.max_pages}"),
+            raise PayloadTooLargeError(
+                f"PDF exceeds the configured maximum page count of {self.max_pages}",
             )
 
         pages: list[ExtractedDocumentPage] = []
@@ -116,12 +110,9 @@ class PypdfDocumentExtractor:
             normalized_text = self._normalize_text(extracted_text)
             total_characters += len(normalized_text)
             if total_characters > self.max_extracted_characters:
-                raise HTTPException(
-                    status.HTTP_413_CONTENT_TOO_LARGE,
-                    detail=(
-                        "Extracted PDF text exceeds the configured maximum of "
-                        f"{self.max_extracted_characters} characters"
-                    ),
+                raise PayloadTooLargeError(
+                    "Extracted PDF text exceeds the configured maximum of "
+                    f"{self.max_extracted_characters} characters",
                 )
             pages.append(
                 ExtractedDocumentPage(
@@ -131,12 +122,9 @@ class PypdfDocumentExtractor:
             )
 
         if not any(page.text.strip() for page in pages):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=(
-                    "PDF did not contain extractable text. Scanned or image-only PDFs "
-                    "are not supported yet"
-                ),
+            raise UnprocessableContentError(
+                "PDF did not contain extractable text. Scanned or image-only PDFs "
+                "are not supported yet",
             )
 
         return ExtractedDocument(pages=pages)

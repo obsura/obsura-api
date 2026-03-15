@@ -9,12 +9,17 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from obsura_api.core.settings import Settings
 from obsura_api.db.models import Job, JobOutput
 from obsura_api.domain.enums import ContentType, FindingKind, JobStatus
+from obsura_api.domain.errors import (
+    BadRequestError,
+    NotFoundError,
+    PayloadTooLargeError,
+    UnprocessableContentError,
+)
 from obsura_api.domain.pii import PIIDetectionOptions
 from obsura_api.domain.structured import (
     StructuredAnalysisRequest,
@@ -151,12 +156,9 @@ class StructuredWorkflowService:
         self._validate_payload_limits(request.data)
         job = self.session.get(Job, request.job_id)
         if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise NotFoundError("Job not found")
         if job.content_type is not ContentType.STRUCTURED_TEXT:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Only structured text jobs can be transformed with this endpoint",
-            )
+            raise BadRequestError("Only structured text jobs can be transformed with this endpoint")
 
         stored_findings = {item.id: item for item in job.findings}
         for override in request.finding_overrides:
@@ -283,30 +285,23 @@ class StructuredWorkflowService:
         stats: StructuredPayloadStats,
     ) -> None:
         if depth > self.settings.max_structured_payload_depth:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(
-                    "Structured payload exceeds the configured maximum depth of "
-                    f"{self.settings.max_structured_payload_depth}"
-                ),
+            raise PayloadTooLargeError(
+                "Structured payload exceeds the configured maximum depth of "
+                f"{self.settings.max_structured_payload_depth}",
             )
         stats.node_count += 1
         if stats.node_count > self.settings.max_structured_payload_nodes:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail=(
-                    "Structured payload exceeds the configured maximum node count of "
-                    f"{self.settings.max_structured_payload_nodes}"
-                ),
+            raise PayloadTooLargeError(
+                "Structured payload exceeds the configured maximum node count of "
+                f"{self.settings.max_structured_payload_nodes}",
             )
 
         if value is None or isinstance(value, (bool, int)):
             return
         if isinstance(value, float):
             if not math.isfinite(value):
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail="Structured JSON values must not contain NaN or Infinity",
+                raise UnprocessableContentError(
+                    "Structured JSON values must not contain NaN or Infinity",
                 )
             return
         if isinstance(value, str):
@@ -323,20 +318,16 @@ class StructuredWorkflowService:
                 self._assert_character_limit(stats)
                 self._walk_payload(item, depth=depth + 1, stats=stats)
             return
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Structured workflows only support JSON-compatible objects and arrays",
+        raise UnprocessableContentError(
+            "Structured workflows only support JSON-compatible objects and arrays",
         )
 
     def _assert_character_limit(self, stats: StructuredPayloadStats) -> None:
         if stats.total_characters <= self.settings.max_structured_payload_characters:
             return
-        raise HTTPException(
-            status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=(
-                "Structured payload exceeds the configured total character limit of "
-                f"{self.settings.max_structured_payload_characters}"
-            ),
+        raise PayloadTooLargeError(
+            "Structured payload exceeds the configured total character limit of "
+            f"{self.settings.max_structured_payload_characters}",
         )
 
     def _iter_string_leaves(
@@ -384,17 +375,13 @@ class StructuredWorkflowService:
                 try:
                     tokens.append(int(item[2:]))
                 except ValueError as exc:
-                    raise HTTPException(
-                        status.HTTP_422_UNPROCESSABLE_CONTENT,
-                        detail="Stored structured path metadata is invalid",
+                    raise UnprocessableContentError(
+                        "Stored structured path metadata is invalid",
                     ) from exc
             elif item.startswith("s:"):
                 tokens.append(item[2:])
             else:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail="Stored structured path metadata is invalid",
-                )
+                raise UnprocessableContentError("Stored structured path metadata is invalid")
         return tuple(tokens)
 
     def _structured_path_tokens(self, finding: FindingRecord) -> tuple[str | int, ...]:
@@ -402,19 +389,13 @@ class StructuredWorkflowService:
         if not isinstance(raw_tokens, list) or not all(
             isinstance(item, str) for item in raw_tokens
         ):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Structured finding is missing safe path metadata",
-            )
+            raise UnprocessableContentError("Structured finding is missing safe path metadata")
         return self._deserialize_path_tokens(raw_tokens)
 
     def _structured_path(self, finding: FindingRecord) -> str:
         path = finding.metadata.get("structured_path")
         if not isinstance(path, str) or not path:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Structured finding is missing safe path metadata",
-            )
+            raise UnprocessableContentError("Structured finding is missing safe path metadata")
         return path
 
     def _resolve_leaf_value(
@@ -428,14 +409,12 @@ class StructuredWorkflowService:
             try:
                 current = current[token]
             except (KeyError, IndexError, TypeError) as exc:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=f"Structured payload no longer matches stored finding path `{path}`",
+                raise UnprocessableContentError(
+                    f"Structured payload no longer matches stored finding path `{path}`",
                 ) from exc
         if not isinstance(current, str):
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Structured payload path `{path}` must resolve to a string value",
+            raise UnprocessableContentError(
+                f"Structured payload path `{path}` must resolve to a string value",
             )
         return current
 
@@ -447,26 +426,21 @@ class StructuredWorkflowService:
         path: str,
     ) -> None:
         if not path_tokens:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Structured payload path `{path}` is invalid",
-            )
+            raise UnprocessableContentError(f"Structured payload path `{path}` is invalid")
         parent: Any = data
         for token in path_tokens[:-1]:
             try:
                 parent = parent[token]
             except (KeyError, IndexError, TypeError) as exc:
-                raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_CONTENT,
-                    detail=f"Structured payload no longer matches stored finding path `{path}`",
+                raise UnprocessableContentError(
+                    f"Structured payload no longer matches stored finding path `{path}`",
                 ) from exc
         leaf_token = path_tokens[-1]
         try:
             parent[leaf_token] = value
         except (KeyError, IndexError, TypeError) as exc:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Structured payload no longer matches stored finding path `{path}`",
+            raise UnprocessableContentError(
+                f"Structured payload no longer matches stored finding path `{path}`",
             ) from exc
 
     def _apply_override(
@@ -478,10 +452,7 @@ class StructuredWorkflowService:
             return
         finding = stored_findings.get(override.finding_id)
         if finding is None:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail=f"Finding {override.finding_id} not found",
-            )
+            raise NotFoundError(f"Finding {override.finding_id} not found")
         if override.decision is not None:
             finding.decision = override.decision
         if override.transformation is not None:

@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from obsura_api import __version__
 from obsura_api.api.responses import (
+    app_error_handler,
     http_exception_handler,
     unhandled_exception_handler,
     validation_exception_handler,
@@ -26,6 +27,7 @@ from obsura_api.db.session import (
     ensure_database_schema,
     verify_database_connection,
 )
+from obsura_api.domain.errors import AppError
 from obsura_api.domain.operational import ServiceRootInfo
 from obsura_api.services.privacy import scrub_persisted_sensitive_data
 from obsura_api.services.providers.documents import build_document_extractor
@@ -216,6 +218,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_exception_handler(AppError, app_error_handler)
     app.add_exception_handler(HTTPException, http_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Iterable
 
-from fastapi import HTTPException, status
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
@@ -23,6 +22,15 @@ from obsura_api.domain.enums import (
     OverlayShape,
     ReviewDecision,
     TransformationMode,
+)
+from obsura_api.domain.errors import (
+    AppError,
+    BadRequestError,
+    ConflictError,
+    NotFoundError,
+    PayloadTooLargeError,
+    UnprocessableContentError,
+    UnsupportedMediaTypeError,
 )
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
@@ -163,16 +171,14 @@ class ImageWorkflowService:
 
         job = self.session.get(Job, request.job_id)
         if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise NotFoundError("Job not found")
         if job.content_type not in {ContentType.IMAGE, ContentType.SCREENSHOT}:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Only image and screenshot jobs can be transformed with this endpoint",
+            raise BadRequestError(
+                "Only image and screenshot jobs can be transformed with this endpoint",
             )
         if not job.source_file_path:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Job does not retain a source image; resubmit the file to transform it",
+            raise BadRequestError(
+                "Job does not retain a source image; resubmit the file to transform it",
             )
 
         stored_findings = {item.id: item for item in job.findings}
@@ -182,15 +188,9 @@ class ImageWorkflowService:
         try:
             file_bytes = self.storage.read_stored_bytes(job.source_file_path)
         except FileNotFoundError as exc:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail="Stored source image was not found for this job",
-            ) from exc
+            raise NotFoundError("Stored source image was not found for this job") from exc
         except ValueError as exc:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail=str(exc),
-            ) from exc
+            raise BadRequestError(str(exc)) from exc
 
         image = self._sanitize_image_payload(file_bytes).image
         findings = [finding_to_schema(item) for item in job.findings]
@@ -271,9 +271,8 @@ class ImageWorkflowService:
 
         if manifest.detect_faces:
             if not self.face_detector.supported:
-                raise HTTPException(
-                    status.HTTP_409_CONFLICT,
-                    detail="Automatic face detection is not configured for this deployment",
+                raise ConflictError(
+                    "Automatic face detection is not configured for this deployment"
                 )
             for face in self.face_detector.detect_faces(file_bytes):
                 findings.append(
@@ -327,10 +326,7 @@ class ImageWorkflowService:
         default_transformation: TransformationRule | None,
     ) -> list[FindingRecord]:
         if not self.ocr_provider.supported:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                detail="Automatic OCR is not configured for this deployment",
-            )
+            raise ConflictError("Automatic OCR is not configured for this deployment")
 
         ocr_blocks = self.ocr_provider.extract_text(file_bytes)
         patterns, entities, text_default_transformation, pii_detection = (
@@ -444,23 +440,16 @@ class ImageWorkflowService:
             with Image.open(BytesIO(file_bytes)) as opened:
                 image_format = (opened.format or "").upper()
                 if image_format not in SUPPORTED_IMAGE_FORMATS:
-                    raise HTTPException(
-                        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                        detail="Uploaded file is not a supported image format",
+                    raise UnsupportedMediaTypeError(
+                        "Uploaded file is not a supported image format",
                     )
                 if getattr(opened, "n_frames", 1) != 1:
-                    raise HTTPException(
-                        status.HTTP_400_BAD_REQUEST,
-                        detail="Animated or multi-frame images are not supported",
-                    )
+                    raise BadRequestError("Animated or multi-frame images are not supported")
                 width, height = opened.size
                 if width * height > self.settings.max_image_pixels:
-                    raise HTTPException(
-                        status.HTTP_413_CONTENT_TOO_LARGE,
-                        detail=(
-                            "Image exceeds the configured pixel limit of "
-                            f"{self.settings.max_image_pixels}"
-                        ),
+                    raise PayloadTooLargeError(
+                        "Image exceeds the configured pixel limit of "
+                        f"{self.settings.max_image_pixels}",
                     )
                 opened.verify()
 
@@ -468,23 +457,14 @@ class ImageWorkflowService:
                 normalized = ImageOps.exif_transpose(opened)
                 normalized.load()
                 image = normalized.convert("RGB")
-        except HTTPException:
+        except AppError:
             raise
         except Image.DecompressionBombError as exc:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail="Image is too large to process safely",
-            ) from exc
+            raise PayloadTooLargeError("Image is too large to process safely") from exc
         except UnidentifiedImageError as exc:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded file is not a valid image",
-            ) from exc
+            raise BadRequestError("Uploaded file is not a valid image") from exc
         except OSError as exc:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded image could not be processed",
-            ) from exc
+            raise BadRequestError("Uploaded image could not be processed") from exc
 
         suffix = f".{self.storage.output_extension}"
         return SanitizedImagePayload(
@@ -499,23 +479,14 @@ class ImageWorkflowService:
             with Image.open(BytesIO(file_bytes)) as opened:
                 opened.load()
                 return opened.convert("RGB")
-        except HTTPException:
+        except AppError:
             raise
         except Image.DecompressionBombError as exc:
-            raise HTTPException(
-                status.HTTP_413_CONTENT_TOO_LARGE,
-                detail="Image is too large to process safely",
-            ) from exc
+            raise PayloadTooLargeError("Image is too large to process safely") from exc
         except UnidentifiedImageError as exc:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded file is not a valid image",
-            ) from exc
+            raise BadRequestError("Uploaded file is not a valid image") from exc
         except OSError as exc:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                detail="Uploaded image could not be processed",
-            ) from exc
+            raise BadRequestError("Uploaded image could not be processed") from exc
 
     def _validate_findings_within_bounds(
         self,
@@ -534,12 +505,8 @@ class ImageWorkflowService:
     ) -> None:
         image_width, image_height = image_size
         if region.x + region.width > image_width or region.y + region.height > image_height:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=(
-                    "Image region is outside the uploaded image bounds "
-                    f"({image_width}x{image_height})"
-                ),
+            raise UnprocessableContentError(
+                f"Image region is outside the uploaded image bounds ({image_width}x{image_height})",
             )
 
     def _should_persist_source_file(self, manifest: ImageWorkflowManifest) -> bool:
@@ -757,10 +724,7 @@ class ImageWorkflowService:
     ) -> None:
         finding = stored_findings.get(override.finding_id)
         if finding is None:
-            raise HTTPException(
-                status.HTTP_404_NOT_FOUND,
-                detail=f"Finding {override.finding_id} not found",
-            )
+            raise NotFoundError(f"Finding {override.finding_id} not found")
         if override.decision is not None:
             finding.decision = override.decision
         if override.transformation is not None:

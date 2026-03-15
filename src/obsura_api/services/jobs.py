@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -14,6 +13,7 @@ from obsura_api.domain.common import (
     build_pagination_meta,
 )
 from obsura_api.domain.enums import JobStatus
+from obsura_api.domain.errors import NotFoundError
 from obsura_api.domain.jobs import JobOutputRecord, JobRead, JobReviewRequest
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingRecord
@@ -144,10 +144,7 @@ class JobService:
         for decision in payload.decisions:
             finding = by_id.get(decision.finding_id)
             if finding is None:
-                raise HTTPException(
-                    status.HTTP_404_NOT_FOUND,
-                    detail=f"Finding {decision.finding_id} not found",
-                )
+                raise NotFoundError(f"Finding {decision.finding_id} not found")
             finding.decision = decision.decision
             if decision.transformation is not None:
                 finding.transformation = decision.transformation.model_dump()
@@ -167,5 +164,5 @@ class JobService:
             .options(selectinload(Job.findings), selectinload(Job.outputs)),
         )
         if job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Job not found")
+            raise NotFoundError("Job not found")
         return job

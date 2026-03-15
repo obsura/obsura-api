@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -14,6 +13,7 @@ from obsura_api.domain.common import (
     build_pagination_meta,
 )
 from obsura_api.domain.enums import SearchResultKind
+from obsura_api.domain.errors import UnprocessableContentError
 
 
 class SearchService:
@@ -28,10 +28,7 @@ class SearchService:
         pagination: PaginationParams,
     ) -> tuple[list[SearchResultItem], PaginationMeta]:
         if not query:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Search query must not be blank",
-            )
+            raise UnprocessableContentError("Search query must not be blank")
         normalized = f"%{query.lower()}%"
         results: list[SearchResultItem] = []
 

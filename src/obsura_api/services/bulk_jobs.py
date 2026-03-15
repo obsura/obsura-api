@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -30,6 +29,7 @@ from obsura_api.domain.enums import (
     BulkOperationKind,
     JobStatus,
 )
+from obsura_api.domain.errors import AppError, NotFoundError, UnprocessableContentError
 from obsura_api.domain.jobs import JobReviewRequest
 from obsura_api.domain.workflows import TextTransformRequest
 from obsura_api.services.detection import TextDetectionService
@@ -387,7 +387,7 @@ class BulkJobService:
                     ),
                 )
                 success_count += 1
-            except HTTPException as exc:
+            except AppError as exc:
                 self.session.rollback()
                 items.append(
                     self._build_review_result(
@@ -463,7 +463,7 @@ class BulkJobService:
                     ),
                 )
                 success_count += 1
-            except HTTPException as exc:
+            except AppError as exc:
                 self.session.rollback()
                 items.append(
                     self._build_transform_result(
@@ -607,7 +607,7 @@ class BulkJobService:
             ),
         )
         if bulk_job is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Bulk job not found")
+            raise NotFoundError("Bulk job not found")
         return bulk_job
 
     def _load_bulk_item(self, item_id: str) -> BulkJobItem:
@@ -621,7 +621,7 @@ class BulkJobService:
             ),
         )
         if item is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Bulk job item not found")
+            raise NotFoundError("Bulk job item not found")
         return item
 
     def _snapshot_items(self, bulk_job: BulkJob) -> list[BulkItemSnapshot]:
@@ -638,21 +638,15 @@ class BulkJobService:
 
     def _validate_bulk_request(self, payload: BulkTextAnalyzeRequest) -> None:
         if len(payload.items) > self.settings.max_bulk_text_items:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=(
-                    "Bulk request exceeds the configured maximum of "
-                    f"{self.settings.max_bulk_text_items} items"
-                ),
+            raise UnprocessableContentError(
+                "Bulk request exceeds the configured maximum of "
+                f"{self.settings.max_bulk_text_items} items",
             )
         total_characters = sum(len(item.content or "") for item in payload.items)
         if total_characters > self.settings.max_bulk_text_total_characters:
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=(
-                    "Bulk request exceeds the configured maximum combined content size of "
-                    f"{self.settings.max_bulk_text_total_characters} characters"
-                ),
+            raise UnprocessableContentError(
+                "Bulk request exceeds the configured maximum combined content size of "
+                f"{self.settings.max_bulk_text_total_characters} characters",
             )
 
     def _validate_bulk_review_targets(
@@ -664,9 +658,8 @@ class BulkJobService:
         invalid_job_ids = [job_id for job_id in entries_by_job_id if job_id not in allowed_job_ids]
         if invalid_job_ids:
             invalid_label = ", ".join(invalid_job_ids)
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Bulk review entries must reference jobs in this bulk run: {invalid_label}",
+            raise UnprocessableContentError(
+                f"Bulk review entries must reference jobs in this bulk run: {invalid_label}",
             )
 
     def _validate_bulk_transform_targets(
@@ -680,10 +673,9 @@ class BulkJobService:
         ]
         if invalid_job_ids:
             invalid_label = ", ".join(invalid_job_ids)
-            raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=f"Bulk transform overrides must reference jobs in this bulk run: {invalid_label}",
+            raise UnprocessableContentError(
+                f"Bulk transform overrides must reference jobs in this bulk run: {invalid_label}",
             )
 
-    def _error_message(self, exc: HTTPException) -> str:
-        return exc.detail if isinstance(exc.detail, str) else "Bulk operation failed"
+    def _error_message(self, exc: AppError) -> str:
+        return exc.message or "Bulk operation failed"
