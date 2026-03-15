@@ -160,6 +160,15 @@ Build the production image locally with:
 docker build -t obsura-api:dev .
 ```
 
+If you enable multi-language Presidio detection, bake the matching spaCy models
+into the image during build instead of relying on runtime installation:
+
+```bash
+docker build \
+  --build-arg OBSURA_SPACY_MODELS="en_core_web_sm es_core_news_sm" \
+  -t obsura-api:dev .
+```
+
 Run it locally with:
 
 ```bash
@@ -168,6 +177,11 @@ docker run --rm -p 8000:8000 obsura-api:dev
 
 The root [Dockerfile](Dockerfile) is multi-stage, runs as a non-root user, and
 is the image used by the `dev` branch CI workflow.
+
+The image is expected to contain every optional runtime dependency it needs
+before container startup. This is especially important because the Compose API
+service runs with `read_only: true`, so Python packages and spaCy models must
+be baked into the image rather than installed on boot.
 
 For a containerized local or self-hosted deployment, use
 [docker-compose.yaml](docker-compose.yaml).

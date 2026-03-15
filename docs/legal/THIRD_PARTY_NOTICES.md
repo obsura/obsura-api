@@ -49,6 +49,7 @@ API implementation and deployment examples:
 | `tesseract-ocr-eng` | English OCR language data in the runtime image |
 | `postgres:17-alpine` | example Compose database image |
 | `en_core_web_sm` | spaCy English model downloaded in the Docker builder flow for Presidio-backed NLP support |
+| `es_core_news_sm` | spaCy Spanish model downloaded in the Docker builder flow for Presidio-backed NLP support |
 
 ## Distribution Notes
 
