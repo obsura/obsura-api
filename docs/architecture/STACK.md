@@ -45,6 +45,9 @@ Python also keeps the stack aligned with the open-source tooling most relevant t
 
 The approved database direction is **PostgreSQL**.
 
+SQLite is still allowed as a local-only development and test convenience, but
+it is not the approved production database.
+
 `obsura-api` is not a stateless utility. It must support a persistent studio model that stores:
 - patterns
 - custom entities

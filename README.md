@@ -101,9 +101,23 @@ Quality commands:
 - `python -m mypy`
 - `python -m pytest --cov=src/obsura_api`
 
-The default database is SQLite for local execution and tests. Production should
-use PostgreSQL as defined in
-[docs/architecture/STACK.md](docs/architecture/STACK.md).
+## Database Modes
+
+`obsura-api` supports both SQLite and PostgreSQL, but they are not equivalent
+deployment choices.
+
+- local development and tests default to SQLite when `DATABASE_URL` is not set
+- production must use PostgreSQL
+- if `OBSURA_ENVIRONMENT=production`, the app rejects SQLite and requires a
+  PostgreSQL `DATABASE_URL`
+
+Examples:
+
+- local default fallback: `sqlite:///./data/obsura.db`
+- production example: `postgresql://obsura:change-me@postgres:5432/obsura`
+
+To confirm what a running instance is using, call `GET /api/v1/version` and
+check `data.database_backend`.
 
 Alembic migrations are now the authoritative schema mechanism for the project.
 The API no longer treats SQLAlchemy `create_all()` as the production schema

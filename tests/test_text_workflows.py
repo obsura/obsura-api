@@ -230,3 +230,54 @@ def test_text_transform_rejects_hash_mode_without_configured_salt(client) -> Non
     body = response.json()
     assert body["success"] is False
     assert "OBSURA_TEXT_HASH_SALT" in body["error"]["message"]
+
+
+def test_text_transform_safe_share_persists_output_intent_metadata(client) -> None:
+    analysis_response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "token=alpha",
+            "exact_values": ["alpha"],
+            "persist_source_content": True,
+        },
+    )
+    assert analysis_response.status_code == 200
+    analysis = analysis_response.json()["data"]
+
+    review_response = client.post(
+        f"/api/v1/jobs/{analysis['job_id']}/review",
+        json={
+            "decisions": [
+                {
+                    "finding_id": analysis["findings"][0]["id"],
+                    "decision": "approved",
+                }
+            ]
+        },
+    )
+    assert review_response.status_code == 200
+
+    transform_response = client.post(
+        "/api/v1/workflows/text/transform",
+        json={
+            "job_id": analysis["job_id"],
+            "content": "token=alpha",
+            "output_intent": "safe_share",
+        },
+    )
+
+    assert transform_response.status_code == 200
+    body = transform_response.json()["data"]
+    assert body["output_intent"] == "safe_share"
+    assert body["share_policy"]["security_rules_enforced"] is True
+    assert body["artifacts"][0]["name"] == "output_text"
+    assert body["artifacts"][0]["intended_use"] == "safe_share"
+    assert body["artifacts"][0]["share_ready"] is True
+    assert body["artifacts"][0]["primary"] is True
+
+    job_response = client.get(f"/api/v1/jobs/{analysis['job_id']}")
+    assert job_response.status_code == 200
+    job = job_response.json()["data"]
+    assert job["outputs"][0]["metadata"]["output_intent"] == "safe_share"
+    assert job["outputs"][0]["artifact"]["name"] == "output_text"
+    assert job["outputs"][0]["artifact"]["share_ready"] is True

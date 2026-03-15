@@ -7,8 +7,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from obsura_api.domain.common import UuidReference
-from obsura_api.domain.enums import ContentType
+from obsura_api.domain.enums import ContentType, OutputIntent
 from obsura_api.domain.pii import PIIDetectionOptions
+from obsura_api.domain.sharing import ShareArtifactSummary, SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingOverride, FindingRecord
 
@@ -29,6 +30,7 @@ class CSVWorkflowManifest(BaseModel):
     pii_detection: PIIDetectionOptions | None = None
     exact_values: list[str] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_job: bool = True
     has_header: bool = True
     delimiter: CSVDelimiter = ","
@@ -69,6 +71,9 @@ class CSVWorkflowResponse(BaseModel):
     output_csv: str | None = None
     formula_escape_count: int = Field(default=0, ge=0)
     replacements: list[CSVReplacementRecord] = Field(default_factory=list)
+    output_intent: OutputIntent | None = None
+    share_policy: SharePolicySummary | None = None
+    artifacts: list[ShareArtifactSummary] = Field(default_factory=list)
     summary: dict[str, int]
 
 
@@ -81,4 +86,5 @@ class CSVJobTransformRequest(BaseModel):
     finding_overrides: list[FindingOverride] = Field(default_factory=list)
     include_pending: bool = False
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_output: bool = True

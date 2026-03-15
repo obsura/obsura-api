@@ -4248,6 +4248,33 @@
             "type": "array",
             "title": "Replacements"
           },
+          "output_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "share_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharePolicySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
           "summary": {
             "additionalProperties": {
               "type": "integer"
@@ -4376,25 +4403,7 @@
             "title": "Face Preferences"
           },
           "metadata": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              ]
-            },
+            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           }
@@ -4526,25 +4535,7 @@
             "title": "Face Preferences"
           },
           "metadata": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              ]
-            },
+            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           },
@@ -4722,25 +4713,7 @@
           "metadata": {
             "anyOf": [
               {
-                "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "boolean"
-                    },
-                    {
-                      "items": {
-                        "type": "string"
-                      },
-                      "type": "array"
-                    }
-                  ]
-                },
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -5189,6 +5162,33 @@
             "type": "array",
             "title": "Replacements"
           },
+          "output_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "share_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharePolicySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
           "summary": {
             "additionalProperties": {
               "type": "integer"
@@ -5401,25 +5401,7 @@
             ]
           },
           "metadata": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              ]
-            },
+            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           }
@@ -5512,6 +5494,10 @@
             "title": "Include Pending",
             "default": false
           },
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
+          },
           "persist_output": {
             "type": "boolean",
             "title": "Persist Output",
@@ -5581,6 +5567,33 @@
             ],
             "title": "Media Url",
             "description": "Media URL derived from the storage-relative output reference."
+          },
+          "output_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "share_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharePolicySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
           },
           "summary": {
             "additionalProperties": {
@@ -5656,26 +5669,18 @@
             "title": "Media Url",
             "description": "Media URL derived from the storage-relative output reference."
           },
+          "artifact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShareArtifactSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "metadata": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "boolean"
-                },
-                {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
-                }
-              ]
-            },
+            "additionalProperties": true,
             "type": "object",
             "title": "Metadata"
           }
@@ -5937,6 +5942,14 @@
           "value_list"
         ],
         "title": "MatcherKind"
+      },
+      "OutputIntent": {
+        "type": "string",
+        "enum": [
+          "preview",
+          "safe_share"
+        ],
+        "title": "OutputIntent"
       },
       "OverlayShape": {
         "type": "string",
@@ -6591,6 +6604,13 @@
             "type": "boolean",
             "title": "Text Hash Supported"
           },
+          "share_output_intents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Share Output Intents"
+          },
           "ocr_available": {
             "type": "boolean",
             "title": "Ocr Available"
@@ -6623,12 +6643,137 @@
           "pii_languages",
           "pii_custom_recognizers",
           "text_hash_supported",
+          "share_output_intents",
           "ocr_available",
           "face_detection_available",
           "pii_available"
         ],
         "title": "ServiceVersionInfo",
         "description": "Runtime version and capability metadata."
+      },
+      "ShareArtifactChannel": {
+        "type": "string",
+        "enum": [
+          "inline",
+          "download",
+          "media"
+        ],
+        "title": "ShareArtifactChannel"
+      },
+      "ShareArtifactKind": {
+        "type": "string",
+        "enum": [
+          "text",
+          "json",
+          "table_preview",
+          "csv_export",
+          "image"
+        ],
+        "title": "ShareArtifactKind"
+      },
+      "ShareArtifactSummary": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ShareArtifactKind"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ShareArtifactChannel"
+          },
+          "intended_use": {
+            "$ref": "#/components/schemas/OutputIntent"
+          },
+          "share_ready": {
+            "type": "boolean",
+            "title": "Share Ready",
+            "default": false
+          },
+          "primary": {
+            "type": "boolean",
+            "title": "Primary",
+            "default": false
+          },
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filename"
+          },
+          "output_file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output File Path"
+          },
+          "media_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Url"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "channel",
+          "intended_use"
+        ],
+        "title": "ShareArtifactSummary",
+        "description": "One explicit artifact produced for preview or sharing."
+      },
+      "SharePolicySummary": {
+        "properties": {
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
+          },
+          "security_rules_enforced": {
+            "type": "boolean",
+            "title": "Security Rules Enforced",
+            "default": false
+          },
+          "auto_adjusted": {
+            "type": "boolean",
+            "title": "Auto Adjusted",
+            "default": false
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "title": "SharePolicySummary",
+        "description": "How the API interpreted a transform request for sharing."
       },
       "StructuredAnalysisRequest": {
         "properties": {
@@ -6712,6 +6857,10 @@
               }
             ]
           },
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
+          },
           "persist_job": {
             "type": "boolean",
             "title": "Persist Job",
@@ -6778,6 +6927,10 @@
                 "type": "null"
               }
             ]
+          },
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
           },
           "persist_output": {
             "type": "boolean",
@@ -6933,6 +7086,10 @@
               }
             ]
           },
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
+          },
           "persist_job": {
             "type": "boolean",
             "title": "Persist Job",
@@ -7005,6 +7162,33 @@
             },
             "type": "array",
             "title": "Replacements"
+          },
+          "output_intent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputIntent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "share_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharePolicySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
           },
           "summary": {
             "additionalProperties": {
@@ -7106,6 +7290,10 @@
                 "type": "null"
               }
             ]
+          },
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
           },
           "persist_job": {
             "type": "boolean",
@@ -7215,6 +7403,10 @@
               }
             ]
           },
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
+          },
           "persist_output": {
             "type": "boolean",
             "title": "Persist Output",
@@ -7249,6 +7441,27 @@
             },
             "type": "array",
             "title": "Replacements"
+          },
+          "output_intent": {
+            "$ref": "#/components/schemas/OutputIntent",
+            "default": "preview"
+          },
+          "share_policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SharePolicySummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ShareArtifactSummary"
+            },
+            "type": "array",
+            "title": "Artifacts"
           },
           "summary": {
             "additionalProperties": {

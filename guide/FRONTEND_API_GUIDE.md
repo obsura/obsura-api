@@ -29,6 +29,7 @@ Frontend expectation:
   `pii_custom_recognizers` are configured
 - use `/api/v1/version` to discover `text_anonymizer_backend` and whether
   `text_hash_supported` is enabled on the deployment
+- use `/api/v1/version` to discover supported `share_output_intents`
 - do not use `/api/v1/health` as a full readiness signal
 - local development CORS allows `http://127.0.0.1:3000` and
   `http://localhost:3000` by default
@@ -100,6 +101,36 @@ Frontend rules:
 
 ## 4. Stable Resource Areas
 
+### Share Intent Contract
+
+Transform workflows now support an explicit `output_intent`.
+
+Supported values:
+
+- `preview`
+- `safe_share`
+
+Meaning:
+
+- `preview` is for operator review, internal iteration, and presentation-oriented output
+- `safe_share` is for export behavior that should enforce stricter sharing rules
+
+Response behavior:
+
+- transform responses may include `output_intent`
+- transform responses may include `share_policy`
+- transform responses now include `artifacts`
+- persisted job outputs may also include these values in output `metadata`
+- persisted job outputs may include a normalized `artifact` object
+
+Frontend rules:
+
+- default to `preview` unless the user is intentionally generating a shareable result
+- show `share_policy.notes` in operator-facing export UI when present
+- use `artifacts` as the authoritative description of what the backend produced
+- do not assume every transformation mode is valid under `safe_share`
+- treat `safe_share` as a backend-enforced policy, not only a visual styling choice
+
 ### Studio
 
 Purpose:
@@ -145,6 +176,8 @@ Stable frontend meaning:
 - findings belong to jobs
 - outputs belong to jobs
 - review updates happen at the job level
+- each stored output may expose an `artifact` object describing whether it is a
+  preview-style or share-style output and how the client should present it
 
 ### Text Workflows
 
@@ -160,6 +193,9 @@ Frontend guidance:
 - treat `analyze-transform` as a convenience path, not the main review-first UI
 - when transforming a persisted text job, resend `content`; raw source text is not
   retained by the backend
+- use `output_intent: "safe_share"` when the operator is generating externally
+  shareable text output
+- use `artifacts[0]` as the primary transformed text artifact descriptor
 - use `pii_detection` when the operator needs language, entity scope, or context
   tuning for Presidio-backed detection
 
@@ -180,6 +216,8 @@ Frontend guidance:
   `csv_row_number`, `csv_column_index`, and `csv_column_name`
 - for reviewed CSV jobs, resend the original CSV file to `transform-job`; raw CSV
   source files are not retained by the backend
+- use `output_intent: "safe_share"` for final share/export flows
+- use `artifacts` to distinguish the review table from the exportable CSV
 - use `output_csv` for file downloads; it is formula-safe and escapes spreadsheet
   formula-like cells before export
 - use `output_rows` for preview UI if you do not want the formula-safe export
@@ -202,6 +240,8 @@ Frontend guidance:
   `document_page_number` and `document_page_label`
 - for reviewed document jobs, resend the original PDF file to `transform-job`;
   raw PDF source files are not retained by the backend
+- use `output_intent: "safe_share"` for final reviewed share flows
+- use `artifacts[0]` as the primary transformed document artifact descriptor
 - scanned or image-only PDFs are intentionally rejected for now; OCR-backed PDF
   support is deferred
 
@@ -221,6 +261,9 @@ Frontend guidance:
 - use `finding.metadata.structured_path` to show the field location in review UI
 - for persisted structured jobs, resend `data` to `transform-job`; raw structured
   source content is not retained by the backend
+- use `output_intent: "safe_share"` when the transformed JSON is intended for
+  external sharing
+- use `artifacts[0]` as the primary transformed JSON artifact descriptor
 - structured workflows use the same review endpoint family under `/api/v1/jobs/{job_id}/review`
 
 ### Image Workflows
@@ -240,6 +283,13 @@ Frontend guidance:
   provided
 - OCR-driven text detection inside images accepts the same `pii_detection` object
   as text workflows
+- use `output_intent: "preview"` for blur/pixelate-driven review visuals
+- use `output_intent: "safe_share"` for final shared screenshots/images
+- use `artifacts[0]` for the canonical generated image artifact and `media_url`
+  from that artifact when present
+- under `safe_share`, OCR or text-derived findings cannot use blur or pixelation;
+  the backend will reject explicit blur/pixelate requests and may auto-upgrade
+  implicit preview defaults to a destructive overlay
 
 ### Bulk Text Workflows
 

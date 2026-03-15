@@ -127,6 +127,9 @@ def test_document_transform_redacts_without_persisting_raw_pdf(document_client: 
     assert "[REDACTED]" in body["output_text"]
     assert body["pages"][0]["output_text"]
     assert body["summary"]["replacement_count"] == 2
+    assert body["artifacts"][0]["name"] == "output_text"
+    assert body["artifacts"][0]["kind"] == "text"
+    assert body["artifacts"][0]["primary"] is True
 
     job_response = document_client.get(f"/api/v1/jobs/{body['job_id']}")
     assert job_response.status_code == 200
@@ -135,6 +138,7 @@ def test_document_transform_redacts_without_persisting_raw_pdf(document_client: 
     assert job["source_file_path"] is None
     assert job["outputs"][0]["output_text"] is None
     assert job["outputs"][0]["metadata"]["document_kind"] == "pdf"
+    assert job["outputs"][0]["artifact"]["name"] == "output_text"
 
 
 def test_document_review_and_transform_job_requires_matching_pdf(

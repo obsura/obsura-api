@@ -13,10 +13,12 @@ from obsura_api.domain.enums import (
     ContentType,
     FindingSource,
     JobStatus,
+    OutputIntent,
     ReviewDecision,
     TransformationMode,
 )
 from obsura_api.domain.errors import BadRequestError, NotFoundError, UnprocessableContentError
+from obsura_api.domain.sharing import SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
     FindingOverride,
@@ -27,6 +29,7 @@ from obsura_api.domain.workflows import (
 )
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
+from obsura_api.services.sharing import build_text_artifact, build_text_share_policy, share_metadata
 from obsura_api.services.utils import hash_value, normalize_token, summarize_findings
 
 SOURCE_PRIORITY = {
@@ -67,6 +70,8 @@ class TextTransformationService:
         job_id: str,
         output_text: str,
         replacement_count: int,
+        output_intent: OutputIntent = OutputIntent.PREVIEW,
+        share_policy: SharePolicySummary | None = None,
     ) -> None:
         """Persist a text output for an existing job."""
 
@@ -74,6 +79,11 @@ class TextTransformationService:
         if job is None:
             return
         job.status = JobStatus.TRANSFORMED
+        resolved_share_policy = share_policy or build_text_share_policy(output_intent)
+        artifact = build_text_artifact(
+            output_intent=output_intent,
+            share_policy=resolved_share_policy,
+        )
         output = JobOutput(
             job_id=job.id,
             content_type=job.content_type,
@@ -81,6 +91,7 @@ class TextTransformationService:
             extra_data={
                 "replacement_count": replacement_count,
                 "output_hash": hash_value(output_text),
+                **share_metadata(output_intent, resolved_share_policy, artifact),
             },
         )
         self.session.add(output)
@@ -109,6 +120,11 @@ class TextTransformationService:
             )
 
         findings = [finding_to_schema(item) for item in job.findings]
+        share_policy = build_text_share_policy(request.output_intent)
+        artifact = build_text_artifact(
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+        )
         output_text, replacements = self.apply_findings(
             content=content,
             findings=findings,
@@ -126,6 +142,7 @@ class TextTransformationService:
                 extra_data={
                     "replacement_count": len(replacements),
                     "output_hash": hash_value(output_text),
+                    **share_metadata(request.output_intent, share_policy, artifact),
                 },
             )
             self.session.add(output)
@@ -136,6 +153,9 @@ class TextTransformationService:
             job_id=job.id,
             output_text=output_text,
             replacements=replacements,
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+            artifacts=[artifact],
             summary={"replacement_count": len(replacements)},
         )
 

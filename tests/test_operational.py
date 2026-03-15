@@ -66,6 +66,7 @@ def test_ready_and_version_endpoints(client) -> None:
     assert version_body["data"]["pii_languages"] == []
     assert version_body["data"]["pii_custom_recognizers"] is False
     assert version_body["data"]["text_hash_supported"] is False
+    assert version_body["data"]["share_output_intents"] == ["preview", "safe_share"]
     assert version_body["data"]["ocr_available"] is False
     assert version_body["data"]["face_detection_available"] is False
     assert version_body["data"]["pii_available"] is False

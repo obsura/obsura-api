@@ -49,6 +49,8 @@ def test_structured_transform_masks_nested_values(client) -> None:
     body = response.json()["data"]
     assert body["output_data"]["patient"]["email"] == "[EMAIL]"
     assert body["output_data"]["audit"][0]["token"] == "[REDACTED]"
+    assert body["artifacts"][0]["name"] == "output_data"
+    assert body["artifacts"][0]["kind"] == "json"
     assert {item["path"] for item in body["replacements"]} == {
         "$.patient.email",
         "$.audit[0].token",
@@ -112,6 +114,7 @@ def test_structured_review_and_transform_job_flow(client) -> None:
     job = job_response.json()["data"]
     assert job["source_text"] is None
     assert job["outputs"][0]["output_text"] is None
+    assert job["outputs"][0]["artifact"]["name"] == "output_data"
     assert job["findings"][0]["metadata"]["structured_path"].startswith("$.customer")
 
 

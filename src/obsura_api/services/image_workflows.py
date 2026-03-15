@@ -32,6 +32,7 @@ from obsura_api.domain.errors import (
     UnprocessableContentError,
     UnsupportedMediaTypeError,
 )
+from obsura_api.domain.sharing import SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import (
     FindingRecord,
@@ -46,6 +47,12 @@ from obsura_api.services.privacy import sanitize_persisted_finding_metadata
 from obsura_api.services.providers.faces import FaceDetector
 from obsura_api.services.providers.ocr import OCRBlock, OCRProvider
 from obsura_api.services.providers.pii import NoOpPIIDetector, PIIDetector
+from obsura_api.services.sharing import (
+    build_image_artifact,
+    build_image_share_policy,
+    resolve_image_transform_for_output_intent,
+    share_metadata,
+)
 from obsura_api.services.storage import StorageService
 from obsura_api.services.studio import StudioService
 from obsura_api.services.utils import hash_value, preview_value, summarize_findings
@@ -131,15 +138,36 @@ class ImageWorkflowService:
         payload = self._sanitize_image_payload(file_bytes)
         image = payload.image.copy()
         findings = self._build_findings(payload.bytes, manifest, image_size=image.size)
+        security_rules_enforced = False
+        auto_adjusted = False
         for finding in findings:
             if finding.region is None:
                 continue
-            rule = finding.transformation or TransformationRule(mode=TransformationMode.BLUR)
-            self._apply_region(image, finding, rule)
+            resolved = resolve_image_transform_for_output_intent(
+                finding=finding,
+                finding_rule=finding.transformation,
+                default_rule=None,
+                output_intent=manifest.output_intent,
+            )
+            security_rules_enforced = security_rules_enforced or resolved.security_rules_enforced
+            auto_adjusted = auto_adjusted or resolved.auto_adjusted
+            self._apply_region(image, finding, resolved.rule)
 
         source_file_path = None
         job_id = None
         stored_output = self.storage.save_image(image)
+        media_url = self.storage.media_url_for(stored_output)
+        share_policy = build_image_share_policy(
+            manifest.output_intent,
+            security_rules_enforced=security_rules_enforced,
+            auto_adjusted=auto_adjusted,
+        )
+        artifact = build_image_artifact(
+            output_intent=manifest.output_intent,
+            share_policy=share_policy,
+            output_file_path=stored_output,
+            media_url=media_url,
+        )
         if manifest.persist_job:
             if self._should_persist_source_file(manifest):
                 source_file_path = self.storage.save_upload(
@@ -155,6 +183,9 @@ class ImageWorkflowService:
                 findings=findings,
                 configuration_ids=manifest.configuration_ids,
                 output_file_path=str(stored_output),
+                output_intent=manifest.output_intent,
+                share_policy=share_policy,
+                artifact=artifact,
             )
 
         return ImageWorkflowResponse(
@@ -162,7 +193,10 @@ class ImageWorkflowService:
             findings=findings,
             stored_input_path=None,
             stored_output_path=stored_output,
-            media_url=self.storage.media_url_for(stored_output),
+            media_url=media_url,
+            output_intent=manifest.output_intent,
+            share_policy=share_policy,
+            artifacts=[artifact],
             summary=summarize_findings(findings),
         )
 
@@ -197,20 +231,35 @@ class ImageWorkflowService:
         self._validate_findings_within_bounds(findings, image.size)
         default_transformation = self._resolve_default_transformation(job.configuration_ids)
         active_findings = self._active_findings(findings, request.include_pending)
+        security_rules_enforced = False
+        auto_adjusted = False
 
         for finding in active_findings:
             if finding.region is None:
                 continue
-            rule = (
-                finding.transformation
-                or default_transformation
-                or TransformationRule(
-                    mode=TransformationMode.BLUR,
-                )
+            resolved = resolve_image_transform_for_output_intent(
+                finding=finding,
+                finding_rule=finding.transformation,
+                default_rule=default_transformation,
+                output_intent=request.output_intent,
             )
-            self._apply_region(image, finding, rule)
+            security_rules_enforced = security_rules_enforced or resolved.security_rules_enforced
+            auto_adjusted = auto_adjusted or resolved.auto_adjusted
+            self._apply_region(image, finding, resolved.rule)
 
         stored_output = self.storage.save_image(image, stem=f"{job.id}-reviewed")
+        media_url = self.storage.media_url_for(stored_output)
+        share_policy = build_image_share_policy(
+            request.output_intent,
+            security_rules_enforced=security_rules_enforced,
+            auto_adjusted=auto_adjusted,
+        )
+        artifact = build_image_artifact(
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+            output_file_path=stored_output,
+            media_url=media_url,
+        )
         if request.persist_output:
             job.status = JobStatus.TRANSFORMED
             job.summary = summarize_findings(findings)
@@ -221,6 +270,7 @@ class ImageWorkflowService:
                 extra_data={
                     "source_output": "reviewed-job-transform",
                     "applied_finding_count": len(active_findings),
+                    **share_metadata(request.output_intent, share_policy, artifact),
                 },
             )
             self.session.add(output)
@@ -231,7 +281,10 @@ class ImageWorkflowService:
             findings=findings,
             stored_input_path=None,
             stored_output_path=stored_output,
-            media_url=self.storage.media_url_for(stored_output),
+            media_url=media_url,
+            output_intent=request.output_intent,
+            share_policy=share_policy,
+            artifacts=[artifact],
             summary=summarize_findings(findings),
         )
 
@@ -406,7 +459,7 @@ class ImageWorkflowService:
         self,
         raw_transformation: TransformationRule | None,
         default_transformation: TransformationRule | None,
-    ) -> TransformationRule:
+    ) -> TransformationRule | None:
         if raw_transformation is not None and raw_transformation.mode in {
             TransformationMode.MASK,
             TransformationMode.BLUR,
@@ -417,7 +470,7 @@ class ImageWorkflowService:
             return raw_transformation
         if default_transformation is not None:
             return default_transformation
-        return TransformationRule(mode=TransformationMode.BLUR)
+        return None
 
     def _combine_regions(self, regions: Iterable[BoundingBox]) -> BoundingBox:
         items = list(regions)
@@ -754,6 +807,9 @@ class ImageWorkflowService:
         findings: list[FindingRecord],
         configuration_ids: list[str],
         output_file_path: str | None = None,
+        output_intent=None,
+        share_policy: SharePolicySummary | None = None,
+        artifact=None,
     ) -> str:
         job = Job(
             title=title,
@@ -795,7 +851,11 @@ class ImageWorkflowService:
                 job_id=job.id,
                 content_type=job.content_type,
                 output_file_path=output_file_path,
-                extra_data={},
+                extra_data=(
+                    share_metadata(output_intent, share_policy, artifact)
+                    if output_intent is not None and share_policy is not None
+                    else {}
+                ),
             )
             self.session.add(output)
 
