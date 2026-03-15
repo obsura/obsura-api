@@ -33,6 +33,7 @@ from obsura_api.services.detection import TextDetectionService
 from obsura_api.services.jobs import finding_to_schema
 from obsura_api.services.providers.pii import NoOpPIIDetector, PIIDetector
 from obsura_api.services.providers.text_anonymizer import NativeTextAnonymizer, TextAnonymizer
+from obsura_api.services.sharing import build_text_share_policy, share_metadata
 from obsura_api.services.text_transformations import TextTransformationService
 from obsura_api.services.utils import hash_value, summarize_findings
 
@@ -154,6 +155,7 @@ class CSVWorkflowService:
             quotechar=manifest.quotechar,
             validate_cell_hash=False,
         )
+        share_policy = build_text_share_policy(manifest.output_intent)
         if job_id is not None:
             self._persist_csv_output(
                 job_id=job_id,
@@ -163,6 +165,8 @@ class CSVWorkflowService:
                 replacement_count=len(replacements),
                 formula_escape_count=formula_escape_count,
                 has_header=resolved.parsed.has_header,
+                output_intent=manifest.output_intent,
+                share_policy=share_policy,
             )
 
         return CSVWorkflowResponse(
@@ -176,6 +180,8 @@ class CSVWorkflowService:
             output_csv=output_csv,
             formula_escape_count=formula_escape_count,
             replacements=replacements,
+            output_intent=manifest.output_intent,
+            share_policy=share_policy,
             summary=self._transform_summary(replacements, formula_escape_count),
         )
 
@@ -206,6 +212,7 @@ class CSVWorkflowService:
             self._apply_override(stored_findings, override)
 
         findings = [finding_to_schema(item) for item in job.findings]
+        share_policy = build_text_share_policy(request.output_intent)
         output_rows, output_csv, replacements, formula_escape_count = self._apply_csv_findings(
             parsed=parsed,
             findings=findings,
@@ -224,6 +231,8 @@ class CSVWorkflowService:
                 replacement_count=len(replacements),
                 formula_escape_count=formula_escape_count,
                 has_header=parsed.has_header,
+                output_intent=request.output_intent,
+                share_policy=share_policy,
             )
 
         return CSVWorkflowResponse(
@@ -237,6 +246,8 @@ class CSVWorkflowService:
             output_csv=output_csv,
             formula_escape_count=formula_escape_count,
             replacements=replacements,
+            output_intent=request.output_intent,
+            share_policy=share_policy,
             summary=self._transform_summary(replacements, formula_escape_count),
         )
 
@@ -625,6 +636,8 @@ class CSVWorkflowService:
         replacement_count: int,
         formula_escape_count: int,
         has_header: bool,
+        output_intent,
+        share_policy,
     ) -> None:
         job = self.session.get(Job, job_id)
         if job is None:
@@ -641,6 +654,7 @@ class CSVWorkflowService:
                 "replacement_count": replacement_count,
                 "formula_escape_count": formula_escape_count,
                 "csv_has_header": has_header,
+                **share_metadata(output_intent, share_policy),
             },
         )
         self.session.add(output)

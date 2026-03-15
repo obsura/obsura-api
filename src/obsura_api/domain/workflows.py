@@ -4,9 +4,16 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from obsura_api.domain.common import BoundingBox, UuidReference
-from obsura_api.domain.enums import ContentType, FindingKind, FindingSource, ReviewDecision
+from obsura_api.domain.common import BoundingBox, MetadataMap, UuidReference
+from obsura_api.domain.enums import (
+    ContentType,
+    FindingKind,
+    FindingSource,
+    OutputIntent,
+    ReviewDecision,
+)
 from obsura_api.domain.pii import PIIDetectionOptions
+from obsura_api.domain.sharing import SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 
 
@@ -45,7 +52,7 @@ class FindingRecord(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     decision: ReviewDecision = ReviewDecision.PENDING
     transformation: TransformationRule | None = None
-    metadata: dict[str, str | int | bool | list[str]] = Field(default_factory=dict)
+    metadata: MetadataMap = Field(default_factory=dict)
 
 
 class TextAnalysisRequest(BaseModel):
@@ -64,6 +71,7 @@ class TextAnalysisRequest(BaseModel):
     exact_values: list[str] = Field(default_factory=list)
     manual_spans: list[ManualTextSpan] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_job: bool = True
     persist_source_content: bool | None = None
 
@@ -118,6 +126,7 @@ class TextTransformRequest(BaseModel):
     finding_overrides: list[FindingOverride] = Field(default_factory=list)
     include_pending: bool = False
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_output: bool = True
 
     @model_validator(mode="after")
@@ -143,6 +152,8 @@ class TextTransformResponse(BaseModel):
     job_id: str | None = None
     output_text: str
     replacements: list[ReplacementRecord]
+    output_intent: OutputIntent = OutputIntent.PREVIEW
+    share_policy: SharePolicySummary | None = None
     summary: dict[str, int]
 
 
@@ -157,7 +168,7 @@ class ImageRegionInput(BaseModel):
     entity_name: str | None = None
     region: BoundingBox
     transformation: TransformationRule | None = None
-    metadata: dict[str, str | int | bool | list[str]] = Field(default_factory=dict)
+    metadata: MetadataMap = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_kind(self) -> "ImageRegionInput":
@@ -187,6 +198,7 @@ class ImageWorkflowManifest(BaseModel):
     detect_text: bool = False
     detect_faces: bool = False
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_job: bool = True
     persist_source_content: bool | None = None
 
@@ -214,6 +226,8 @@ class ImageWorkflowResponse(BaseModel):
         default=None,
         description="Media URL derived from the storage-relative output reference.",
     )
+    output_intent: OutputIntent | None = None
+    share_policy: SharePolicySummary | None = None
     summary: dict[str, int]
 
 
@@ -241,4 +255,5 @@ class ImageJobTransformRequest(BaseModel):
     job_id: UuidReference
     finding_overrides: list[ImageFindingOverride] = Field(default_factory=list)
     include_pending: bool = False
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_output: bool = True

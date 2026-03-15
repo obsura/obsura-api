@@ -38,6 +38,7 @@ class ServiceVersionInfo(BaseModel):
     pii_languages: list[str]
     pii_custom_recognizers: bool
     text_hash_supported: bool
+    share_output_intents: list[str]
     ocr_available: bool
     face_detection_available: bool
     pii_available: bool

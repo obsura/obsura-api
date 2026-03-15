@@ -5,8 +5,9 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from obsura_api.domain.common import UuidReference
-from obsura_api.domain.enums import ContentType
+from obsura_api.domain.enums import ContentType, OutputIntent
 from obsura_api.domain.pii import PIIDetectionOptions
+from obsura_api.domain.sharing import SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingOverride, FindingRecord
 
@@ -25,6 +26,7 @@ class DocumentWorkflowManifest(BaseModel):
     pii_detection: PIIDetectionOptions | None = None
     exact_values: list[str] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_job: bool = True
 
     @model_validator(mode="after")
@@ -64,6 +66,8 @@ class DocumentWorkflowResponse(BaseModel):
     pages: list[DocumentPageResult] = Field(default_factory=list)
     output_text: str | None = None
     replacements: list[DocumentReplacementRecord] = Field(default_factory=list)
+    output_intent: OutputIntent | None = None
+    share_policy: SharePolicySummary | None = None
     summary: dict[str, int]
 
 
@@ -76,4 +80,5 @@ class DocumentJobTransformRequest(BaseModel):
     finding_overrides: list[FindingOverride] = Field(default_factory=list)
     include_pending: bool = False
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_output: bool = True

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from math import ceil
-from typing import Annotated, Any, Generic, TypeVar
+from typing import Annotated, Any, Generic, TypeAlias, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,6 +19,7 @@ UUID_REFERENCE_PATTERN = (
     r"[0-9a-fA-F]{12}$"
 )
 UuidReference = Annotated[str, Field(pattern=UUID_REFERENCE_PATTERN)]
+MetadataMap: TypeAlias = dict[str, Any]
 
 
 class TimestampedModel(BaseModel):

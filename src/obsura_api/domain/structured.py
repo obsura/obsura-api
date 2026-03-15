@@ -8,7 +8,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from obsura_api.domain.common import UuidReference
+from obsura_api.domain.enums import OutputIntent
 from obsura_api.domain.pii import PIIDetectionOptions
+from obsura_api.domain.sharing import SharePolicySummary
 from obsura_api.domain.transforms import TransformationRule
 from obsura_api.domain.workflows import FindingOverride, FindingRecord
 
@@ -49,6 +51,7 @@ class StructuredAnalysisRequest(BaseModel):
     pii_detection: PIIDetectionOptions | None = None
     exact_values: list[str] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_job: bool = True
     persist_source_content: bool | None = None
 
@@ -72,6 +75,7 @@ class StructuredTransformRequest(BaseModel):
     pii_detection: PIIDetectionOptions | None = None
     exact_values: list[str] = Field(default_factory=list)
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_job: bool = True
     persist_source_content: bool | None = None
     persist_output: bool = True
@@ -100,6 +104,8 @@ class StructuredWorkflowResponse(BaseModel):
     findings: list[FindingRecord]
     output_data: StructuredJSONValue | None = None
     replacements: list[StructuredReplacementRecord] = Field(default_factory=list)
+    output_intent: OutputIntent | None = None
+    share_policy: SharePolicySummary | None = None
     summary: dict[str, int]
 
 
@@ -113,6 +119,7 @@ class StructuredJobTransformRequest(BaseModel):
     finding_overrides: list[FindingOverride] = Field(default_factory=list)
     include_pending: bool = False
     default_transformation: TransformationRule | None = None
+    output_intent: OutputIntent = OutputIntent.PREVIEW
     persist_output: bool = True
 
     @model_validator(mode="after")

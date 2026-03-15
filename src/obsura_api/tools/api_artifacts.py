@@ -247,6 +247,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             }
         ],
         "include_pending": False,
+        "output_intent": "safe_share",
         "persist_output": True,
     },
     ("POST", "/api/v1/workflows/text/analyze-transform"): {
@@ -296,6 +297,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             }
         },
         "exact_values": ["secret"],
+        "output_intent": "safe_share",
         "persist_job": False,
     },
     ("POST", "/api/v1/workflows/structured/transform-job"): {
@@ -313,6 +315,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             }
         ],
         "include_pending": False,
+        "output_intent": "safe_share",
         "persist_output": True,
     },
     ("POST", "/api/v1/workflows/documents/transform-job"): {
@@ -324,6 +327,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             }
         ],
         "include_pending": False,
+        "output_intent": "safe_share",
         "persist_output": True,
     },
     ("POST", "/api/v1/workflows/images/transform-job"): {
@@ -342,6 +346,7 @@ REQUEST_EXAMPLES: dict[tuple[str, str], dict[str, Any]] = {
             }
         ],
         "include_pending": False,
+        "output_intent": "safe_share",
         "persist_output": True,
     },
 }
@@ -380,6 +385,7 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 },
                 "apply_builtins": True,
                 "exact_values": ["secret"],
+                "output_intent": "safe_share",
                 "has_header": True,
                 "persist_job": True,
             },
@@ -397,6 +403,7 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                     }
                 ],
                 "include_pending": False,
+                "output_intent": "safe_share",
                 "persist_output": True,
             },
             indent=2,
@@ -434,6 +441,7 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 },
                 "exact_values": ["secret"],
                 "apply_builtins": True,
+                "output_intent": "safe_share",
                 "persist_job": True,
             },
             indent=2,
@@ -450,6 +458,7 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                     }
                 ],
                 "include_pending": False,
+                "output_intent": "safe_share",
                 "persist_output": True,
             },
             indent=2,
@@ -470,6 +479,7 @@ FORM_EXAMPLES: dict[tuple[str, str], dict[str, str]] = {
                 },
                 "apply_builtins": True,
                 "detect_text": True,
+                "output_intent": "safe_share",
                 "regions": [
                     {
                         "kind": "image_region",

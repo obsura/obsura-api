@@ -2505,7 +2505,7 @@
                 {
                   "key": "manifest_json",
                   "type": "text",
-                  "value": "{\n  \"title\": \"Customer export transform\",\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"EMAIL_ADDRESS\",\n      \"PERSON\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"email\",\n      \"contact\"\n    ]\n  },\n  \"apply_builtins\": true,\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"has_header\": true,\n  \"persist_job\": true\n}"
+                  "value": "{\n  \"title\": \"Customer export transform\",\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"EMAIL_ADDRESS\",\n      \"PERSON\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"email\",\n      \"contact\"\n    ]\n  },\n  \"apply_builtins\": true,\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"output_intent\": \"safe_share\",\n  \"has_header\": true,\n  \"persist_job\": true\n}"
                 }
               ]
             }
@@ -2615,7 +2615,7 @@
                 {
                   "key": "manifest_json",
                   "type": "text",
-                  "value": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}"
+                  "value": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"output_intent\": \"safe_share\",\n  \"persist_output\": true\n}"
                 }
               ]
             }
@@ -2841,7 +2841,7 @@
                 {
                   "key": "manifest_json",
                   "type": "text",
-                  "value": "{\n  \"title\": \"Customer contract export\",\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"EMAIL_ADDRESS\",\n      \"PERSON\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"contract\",\n      \"contact\"\n    ]\n  },\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"apply_builtins\": true,\n  \"persist_job\": true\n}"
+                  "value": "{\n  \"title\": \"Customer contract export\",\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"EMAIL_ADDRESS\",\n      \"PERSON\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"contract\",\n      \"contact\"\n    ]\n  },\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"apply_builtins\": true,\n  \"output_intent\": \"safe_share\",\n  \"persist_job\": true\n}"
                 }
               ]
             }
@@ -2951,7 +2951,7 @@
                 {
                   "key": "manifest_json",
                   "type": "text",
-                  "value": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}"
+                  "value": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"output_intent\": \"safe_share\",\n  \"persist_output\": true\n}"
                 }
               ]
             }
@@ -3170,7 +3170,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"content\": \"Connect to https://internal.example.com from 10.0.0.1 as root\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"semantic\",\n        \"semantic_label\": \"INTERNAL_DOMAIN\"\n      }\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"content\": \"Connect to https://internal.example.com from 10.0.0.1 as root\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"semantic\",\n        \"semantic_label\": \"INTERNAL_DOMAIN\"\n      }\n    }\n  ],\n  \"include_pending\": false,\n  \"output_intent\": \"safe_share\",\n  \"persist_output\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3500,7 +3500,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Structured one-shot export\",\n  \"data\": {\n    \"customer\": {\n      \"email\": \"john@example.com\",\n      \"token\": \"secret\"\n    }\n  },\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"persist_job\": false\n}",
+              "raw": "{\n  \"title\": \"Structured one-shot export\",\n  \"data\": {\n    \"customer\": {\n      \"email\": \"john@example.com\",\n      \"token\": \"secret\"\n    }\n  },\n  \"exact_values\": [\n    \"secret\"\n  ],\n  \"output_intent\": \"safe_share\",\n  \"persist_job\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3608,7 +3608,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"data\": {\n    \"customer\": {\n      \"email\": \"john@example.com\",\n      \"id\": \"CUST-123\"\n    }\n  },\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"data\": {\n    \"customer\": {\n      \"email\": \"john@example.com\",\n      \"id\": \"CUST-123\"\n    }\n  },\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\"\n    }\n  ],\n  \"include_pending\": false,\n  \"output_intent\": \"safe_share\",\n  \"persist_output\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3727,7 +3727,7 @@
                 {
                   "key": "manifest_json",
                   "type": "text",
-                  "value": "{\n  \"title\": \"Screenshot region review\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"PERSON\",\n      \"EMAIL_ADDRESS\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"email\",\n      \"contact\"\n    ]\n  },\n  \"apply_builtins\": true,\n  \"detect_text\": true,\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"Secret block\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"blur\",\n        \"blur_radius\": 10\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
+                  "value": "{\n  \"title\": \"Screenshot region review\",\n  \"content_type\": \"screenshot\",\n  \"configuration_ids\": [\n    \"{{configurationId}}\"\n  ],\n  \"pattern_ids\": [\n    \"{{patternId}}\"\n  ],\n  \"custom_entity_ids\": [\n    \"{{entityId}}\"\n  ],\n  \"pii_detection\": {\n    \"language\": \"en\",\n    \"entity_allow_list\": [\n      \"PERSON\",\n      \"EMAIL_ADDRESS\"\n    ],\n    \"context_words\": [\n      \"customer\",\n      \"email\",\n      \"contact\"\n    ]\n  },\n  \"apply_builtins\": true,\n  \"detect_text\": true,\n  \"output_intent\": \"safe_share\",\n  \"regions\": [\n    {\n      \"kind\": \"image_region\",\n      \"source\": \"manual\",\n      \"entity_type\": \"SECRET_REGION\",\n      \"entity_name\": \"Secret block\",\n      \"region\": {\n        \"x\": 48,\n        \"y\": 24,\n        \"width\": 240,\n        \"height\": 96\n      },\n      \"transformation\": {\n        \"mode\": \"blur\",\n        \"blur_radius\": 10\n      }\n    }\n  ],\n  \"detect_faces\": false,\n  \"persist_job\": true\n}"
                 }
               ]
             }
@@ -3942,7 +3942,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"blur\",\n        \"blur_radius\": 12,\n        \"region_padding\": 6,\n        \"outline_color\": \"#ff4d4f\",\n        \"outline_width\": 2\n      }\n    }\n  ],\n  \"include_pending\": false,\n  \"persist_output\": true\n}",
+              "raw": "{\n  \"job_id\": \"{{jobId}}\",\n  \"finding_overrides\": [\n    {\n      \"finding_id\": \"{{findingId}}\",\n      \"decision\": \"approved\",\n      \"transformation\": {\n        \"mode\": \"blur\",\n        \"blur_radius\": 12,\n        \"region_padding\": 6,\n        \"outline_color\": \"#ff4d4f\",\n        \"outline_width\": 2\n      }\n    }\n  ],\n  \"include_pending\": false,\n  \"output_intent\": \"safe_share\",\n  \"persist_output\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"

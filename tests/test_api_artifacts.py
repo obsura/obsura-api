@@ -59,6 +59,7 @@ def test_postman_collection_uses_chained_variables() -> None:
     )
     assert "{{jobId}}" in transform_job_request["request"]["body"]["raw"]
     assert "{{findingId}}" in transform_job_request["request"]["body"]["raw"]
+    assert '"output_intent": "safe_share"' in transform_job_request["request"]["body"]["raw"]
 
     analyze_image_request = next(
         item for item in image_folder["item"] if item["name"] == "Analyze Image"
@@ -105,6 +106,7 @@ def test_postman_collection_uses_chained_variables() -> None:
     )
     assert "{{jobId}}" in csv_transform_manifest_field["value"]
     assert "{{findingId}}" in csv_transform_manifest_field["value"]
+    assert '"output_intent": "safe_share"' in csv_transform_manifest_field["value"]
 
     document_folder = next(
         item for item in collection["item"] if item["name"] == "Document Workflows"
@@ -130,3 +132,4 @@ def test_postman_collection_uses_chained_variables() -> None:
     )
     assert "{{jobId}}" in document_transform_manifest_field["value"]
     assert "{{findingId}}" in document_transform_manifest_field["value"]
+    assert '"output_intent": "safe_share"' in document_transform_manifest_field["value"]

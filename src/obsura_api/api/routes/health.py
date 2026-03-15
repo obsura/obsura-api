@@ -14,6 +14,7 @@ from obsura_api.core.settings import Settings
 from obsura_api.db.migrations import describe_schema_mismatch, get_schema_state
 from obsura_api.db.session import verify_database_connection
 from obsura_api.domain.common import ApiResponse
+from obsura_api.domain.enums import OutputIntent
 from obsura_api.domain.operational import ServiceVersionInfo
 
 router = APIRouter(tags=["health"])
@@ -81,6 +82,7 @@ def version(settings: SettingsDep, container: ContainerDep) -> ApiResponse[Servi
                 getattr(container.pii_detector, "custom_recognizers_configured", False),
             ),
             text_hash_supported=bool(getattr(container.text_anonymizer, "hash_supported", False)),
+            share_output_intents=[item.value for item in OutputIntent],
             ocr_available=container.ocr_provider.supported,
             face_detection_available=container.face_detector.supported,
             pii_available=container.pii_detector.supported,

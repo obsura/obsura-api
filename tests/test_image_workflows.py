@@ -363,6 +363,113 @@ def test_ocr_derived_image_finding_can_be_reviewed_and_transformed(client) -> No
     assert transformed.getpixel((8, 5)) != (255, 255, 255)
 
 
+def test_safe_share_image_transform_upgrades_implicit_ocr_blur_to_overlay(client) -> None:
+    client.app.state.container.ocr_provider = FakeOCRProvider(
+        [
+            OCRBlock(
+                text="token alpha",
+                region=BoundingBox(x=0, y=0, width=12, height=10),
+                confidence=0.91,
+                tokens=[
+                    OCRToken(
+                        text="token",
+                        region=BoundingBox(x=0, y=0, width=5, height=10),
+                        confidence=0.91,
+                    ),
+                    OCRToken(
+                        text="alpha",
+                        region=BoundingBox(x=6, y=0, width=6, height=10),
+                        confidence=0.91,
+                    ),
+                ],
+            )
+        ]
+    )
+
+    image = Image.new("RGB", (20, 20), color="white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+
+    response = client.post(
+        "/api/v1/workflows/images/transform",
+        files={"file": ("ocr-safe-share.png", buffer.getvalue(), "image/png")},
+        data={
+            "manifest_json": json.dumps(
+                {
+                    "content_type": "screenshot",
+                    "detect_text": True,
+                    "apply_builtins": False,
+                    "exact_values": ["alpha"],
+                    "output_intent": "safe_share",
+                    "persist_job": False,
+                }
+            )
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()["data"]
+    assert body["output_intent"] == "safe_share"
+    assert body["share_policy"]["security_rules_enforced"] is True
+    assert body["share_policy"]["auto_adjusted"] is True
+    transformed = _open_stored_image(client, body["stored_output_path"])
+    assert transformed.getpixel((8, 5)) == (17, 17, 17)
+
+
+def test_safe_share_image_transform_rejects_explicit_ocr_blur(client) -> None:
+    client.app.state.container.ocr_provider = FakeOCRProvider(
+        [
+            OCRBlock(
+                text="token alpha",
+                region=BoundingBox(x=0, y=0, width=12, height=10),
+                confidence=0.91,
+                tokens=[
+                    OCRToken(
+                        text="token",
+                        region=BoundingBox(x=0, y=0, width=5, height=10),
+                        confidence=0.91,
+                    ),
+                    OCRToken(
+                        text="alpha",
+                        region=BoundingBox(x=6, y=0, width=6, height=10),
+                        confidence=0.91,
+                    ),
+                ],
+            )
+        ]
+    )
+
+    image = Image.new("RGB", (20, 20), color="white")
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+
+    response = client.post(
+        "/api/v1/workflows/images/transform",
+        files={"file": ("ocr-safe-share.png", buffer.getvalue(), "image/png")},
+        data={
+            "manifest_json": json.dumps(
+                {
+                    "content_type": "screenshot",
+                    "detect_text": True,
+                    "apply_builtins": False,
+                    "exact_values": ["alpha"],
+                    "output_intent": "safe_share",
+                    "default_transformation": {
+                        "mode": "blur",
+                        "blur_radius": 12,
+                    },
+                    "persist_job": False,
+                }
+            )
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert "does not allow blur or pixelation" in body["error"]["message"]
+
+
 def test_persisted_image_job_hides_source_reference_and_raw_ocr_text(client) -> None:
     client.app.state.container.ocr_provider = FakeOCRProvider(
         [

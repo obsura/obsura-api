@@ -41,6 +41,11 @@ class TransformationMode(str, Enum):
     IMAGE_REPLACEMENT = "image_replacement"
 
 
+class OutputIntent(str, Enum):
+    PREVIEW = "preview"
+    SAFE_SHARE = "safe_share"
+
+
 class OverlayShape(str, Enum):
     RECTANGLE = "rectangle"
     ROUNDED_RECTANGLE = "rounded_rectangle"
