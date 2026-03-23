@@ -379,15 +379,13 @@ class TextDetectionService:
             resolved_default,
             resolved_pii_detection,
             built_in_entity_allow_list,
-        ) = (
-            self.resolve_detection_context(
-                content_type=content_type,
-                pattern_ids=pattern_ids,
-                custom_entity_ids=custom_entity_ids,
-                configuration_ids=configuration_ids,
-                default_transformation=default_transformation,
-                pii_detection=pii_detection,
-            )
+        ) = self.resolve_detection_context(
+            content_type=content_type,
+            pattern_ids=pattern_ids,
+            custom_entity_ids=custom_entity_ids,
+            configuration_ids=configuration_ids,
+            default_transformation=default_transformation,
+            pii_detection=pii_detection,
         )
         return (
             patterns,

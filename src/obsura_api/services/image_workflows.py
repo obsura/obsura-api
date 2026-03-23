@@ -384,14 +384,12 @@ class ImageWorkflowService:
             text_default_transformation,
             pii_detection,
             built_in_entity_allow_list,
-        ) = (
-            self.text_detection.resolve_transient_detection_context(
-                content_type=ContentType.TEXT,
-                pattern_ids=manifest.pattern_ids,
-                custom_entity_ids=manifest.custom_entity_ids,
-                configuration_ids=manifest.configuration_ids,
-                pii_detection=manifest.pii_detection,
-            )
+        ) = self.text_detection.resolve_transient_detection_context(
+            content_type=ContentType.TEXT,
+            pattern_ids=manifest.pattern_ids,
+            custom_entity_ids=manifest.custom_entity_ids,
+            configuration_ids=manifest.configuration_ids,
+            pii_detection=manifest.pii_detection,
         )
         findings: list[FindingRecord] = []
         for block in ocr_blocks:
