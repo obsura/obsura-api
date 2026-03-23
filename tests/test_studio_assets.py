@@ -32,8 +32,10 @@ def test_pattern_from_selection_and_search(client) -> None:
             "pattern_ids": [pattern["id"]],
             "custom_entity_ids": [],
             "pii_detection": {
+                "enabled": True,
                 "language": "en",
                 "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS"],
+                "entity_exclude_list": ["PERSON"],
                 "context_words": ["email", "server"],
             },
             "metadata": {"team": "platform"},
@@ -45,8 +47,10 @@ def test_pattern_from_selection_and_search(client) -> None:
     configuration = configuration_body["data"]
     assert configuration["metadata"]["team"] == "platform"
     assert configuration["pii_detection"] == {
+        "enabled": True,
         "language": "en",
         "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS"],
+        "entity_exclude_list": ["PERSON"],
         "context_words": ["email", "server"],
         "confidence_profile": None,
         "min_confidence": None,

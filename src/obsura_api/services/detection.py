@@ -525,10 +525,14 @@ class TextDetectionService:
     ) -> list[FindingRecord]:
         if not self.pii_detector.supported:
             return []
+        if pii_detection is not None and pii_detection.enabled is False:
+            return []
 
         findings: list[FindingRecord] = []
         detector_language = pii_detection.language if pii_detection is not None else None
-        detector_entities = pii_detection.entity_allow_list if pii_detection is not None else None
+        detector_entities = (
+            pii_detection.resolved_entity_allow_list() if pii_detection is not None else None
+        )
         detector_context = pii_detection.context_words if pii_detection is not None else None
         detector_min_confidence = (
             pii_detection.resolved_min_confidence() if pii_detection is not None else None
@@ -547,6 +551,10 @@ class TextDetectionService:
             raise UnprocessableContentError(str(exc)) from exc
 
         for entity in detected_entities:
+            if pii_detection is not None and not pii_detection.is_entity_enabled(
+                entity.entity_type
+            ):
+                continue
             if self._overlaps_existing_span(entity, existing_findings):
                 continue
             entity_threshold = self._effective_entity_threshold(pii_detection, entity.entity_type)
