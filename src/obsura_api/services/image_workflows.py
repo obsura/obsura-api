@@ -364,12 +364,8 @@ class ImageWorkflowService:
         configuration_ids: list[str],
         request_default: TransformationRule | None = None,
     ) -> TransformationRule | None:
-        if request_default is not None:
-            return request_default
-        for configuration in self.studio.resolve_configurations(configuration_ids):
-            if configuration.default_image_transformation:
-                return TransformationRule.model_validate(configuration.default_image_transformation)
-        return None
+        _ = configuration_ids
+        return request_default
 
     def _build_ocr_findings(
         self,
@@ -382,7 +378,13 @@ class ImageWorkflowService:
             raise ConflictError("Automatic OCR is not configured for this deployment")
 
         ocr_blocks = self.ocr_provider.extract_text(file_bytes)
-        patterns, entities, text_default_transformation, pii_detection = (
+        (
+            patterns,
+            entities,
+            text_default_transformation,
+            pii_detection,
+            built_in_entity_allow_list,
+        ) = (
             self.text_detection.resolve_transient_detection_context(
                 content_type=ContentType.TEXT,
                 pattern_ids=manifest.pattern_ids,
@@ -403,6 +405,7 @@ class ImageWorkflowService:
                 entities=entities,
                 default_transformation=text_default_transformation,
                 pii_detection=pii_detection,
+                built_in_entity_allow_list=built_in_entity_allow_list,
             )
             for text_finding in text_findings:
                 region = self._region_for_text_finding(block, text_finding)

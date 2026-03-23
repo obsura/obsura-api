@@ -45,6 +45,7 @@ def test_build_pii_detector_uses_configured_backend(monkeypatch) -> None:
             language: str | None = None,
             entity_allow_list: list[str] | None = None,
             context_words: list[str] | None = None,
+            min_confidence: float | None = None,
         ) -> list[DetectedPIIEntity]:
             return []
 
@@ -93,6 +94,7 @@ def test_text_analysis_detects_presidio_entities_from_provider(client) -> None:
             language: str | None = None,
             entity_allow_list: list[str] | None = None,
             context_words: list[str] | None = None,
+            min_confidence: float | None = None,
         ) -> list[DetectedPIIEntity]:
             start_index = text.index("John Doe")
             return [
@@ -136,6 +138,7 @@ def test_text_analysis_skips_overlapping_pii_with_existing_builtin(client) -> No
             language: str | None = None,
             entity_allow_list: list[str] | None = None,
             context_words: list[str] | None = None,
+            min_confidence: float | None = None,
         ) -> list[DetectedPIIEntity]:
             start_index = text.index("john@example.com")
             return [
@@ -177,6 +180,7 @@ def test_image_ocr_analysis_detects_pii_from_provider(client) -> None:
             language: str | None = None,
             entity_allow_list: list[str] | None = None,
             context_words: list[str] | None = None,
+            min_confidence: float | None = None,
         ) -> list[DetectedPIIEntity]:
             return [
                 DetectedPIIEntity(
@@ -257,11 +261,13 @@ def test_text_analysis_passes_pii_detection_options_to_provider(client) -> None:
             language: str | None = None,
             entity_allow_list: list[str] | None = None,
             context_words: list[str] | None = None,
+            min_confidence: float | None = None,
         ) -> list[DetectedPIIEntity]:
             captured["text"] = text
             captured["language"] = language
             captured["entity_allow_list"] = entity_allow_list
             captured["context_words"] = context_words
+            captured["min_confidence"] = min_confidence
             return []
 
     client.app.state.container.pii_detector = FakePIIDetector()
@@ -275,6 +281,7 @@ def test_text_analysis_passes_pii_detection_options_to_provider(client) -> None:
                 "language": "es",
                 "entity_allow_list": ["email_address"],
                 "context_words": ["correo", "contacto"],
+                "min_confidence": 80,
             },
         },
     )
@@ -285,6 +292,7 @@ def test_text_analysis_passes_pii_detection_options_to_provider(client) -> None:
         "language": "es",
         "entity_allow_list": ["EMAIL_ADDRESS"],
         "context_words": ["correo", "contacto"],
+        "min_confidence": 0.8,
     }
 
 
@@ -319,10 +327,12 @@ def test_text_analysis_uses_configuration_pii_detection_defaults(client) -> None
             language: str | None = None,
             entity_allow_list: list[str] | None = None,
             context_words: list[str] | None = None,
+            min_confidence: float | None = None,
         ) -> list[DetectedPIIEntity]:
             captured["language"] = language
             captured["entity_allow_list"] = entity_allow_list
             captured["context_words"] = context_words
+            captured["min_confidence"] = min_confidence
             return []
 
     client.app.state.container.pii_detector = FakePIIDetector()
@@ -341,6 +351,7 @@ def test_text_analysis_uses_configuration_pii_detection_defaults(client) -> None
         "language": "ar",
         "entity_allow_list": ["PERSON", "PHONE_NUMBER"],
         "context_words": ["المريض", "الهاتف"],
+        "min_confidence": None,
     }
 
 
@@ -360,6 +371,7 @@ def test_bulk_text_analysis_passes_pii_detection_options_to_provider(client) -> 
             language: str | None = None,
             entity_allow_list: list[str] | None = None,
             context_words: list[str] | None = None,
+            min_confidence: float | None = None,
         ) -> list[DetectedPIIEntity]:
             captured.append(
                 {
@@ -367,6 +379,7 @@ def test_bulk_text_analysis_passes_pii_detection_options_to_provider(client) -> 
                     "language": language,
                     "entity_allow_list": entity_allow_list,
                     "context_words": context_words,
+                    "min_confidence": min_confidence,
                 },
             )
             return []
@@ -380,6 +393,7 @@ def test_bulk_text_analysis_passes_pii_detection_options_to_provider(client) -> 
                 "language": "en",
                 "entity_allow_list": ["person"],
                 "context_words": ["customer"],
+                "min_confidence": 0.75,
             },
             "items": [
                 {"content": "John Doe"},
@@ -395,11 +409,60 @@ def test_bulk_text_analysis_passes_pii_detection_options_to_provider(client) -> 
             "language": "en",
             "entity_allow_list": ["PERSON"],
             "context_words": ["customer"],
+            "min_confidence": 0.75,
         },
         {
             "text": "Jane Doe",
             "language": "en",
             "entity_allow_list": ["PERSON"],
             "context_words": ["customer"],
+            "min_confidence": 0.75,
         },
     ]
+
+
+def test_text_analysis_falls_back_to_minimal_pii_profile_when_no_configurations(client) -> None:
+    captured: dict[str, object] = {}
+
+    class FakePIIDetector:
+        name = "fake-pii-detector"
+        supported = True
+        supported_languages = ("en",)
+        custom_recognizers_configured = False
+
+        def detect_entities(
+            self,
+            text: str,
+            *,
+            language: str | None = None,
+            entity_allow_list: list[str] | None = None,
+            context_words: list[str] | None = None,
+            min_confidence: float | None = None,
+        ) -> list[DetectedPIIEntity]:
+            captured["language"] = language
+            captured["entity_allow_list"] = entity_allow_list
+            captured["context_words"] = context_words
+            captured["min_confidence"] = min_confidence
+            return []
+
+    client.app.state.container.pii_detector = FakePIIDetector()
+
+    response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "Contact me at john@example.com or +1 202-555-0199",
+            "persist_job": False,
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "language": None,
+        "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS", "PHONE_NUMBER"],
+        "context_words": ["email", "mail", "phone", "contact", "ip", "address"],
+        "min_confidence": 0.8,
+    }
+    entity_types = {item["entity_type"] for item in response.json()["data"]["findings"]}
+    assert "EMAIL_ADDRESS" in entity_types
+    assert "PHONE_NUMBER" in entity_types
+    assert "JWT" not in entity_types

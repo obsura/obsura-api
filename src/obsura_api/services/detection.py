@@ -65,6 +65,17 @@ BUILT_IN_PATTERNS: list[BuiltInPattern] = [
         ),
     ),
     BuiltInPattern(
+        entity_type="PHONE_NUMBER",
+        entity_name="Phone number",
+        pattern=re.compile(
+            r"(?<!\w)(?:\+?\d[\d\s().-]{7,}\d)(?!\w)",
+        ),
+        transformation=TransformationRule(
+            mode=TransformationMode.SEMANTIC,
+            semantic_label="PHONE_NUMBER",
+        ),
+    ),
+    BuiltInPattern(
         entity_type="URL",
         entity_name="URL",
         pattern=re.compile(r"\bhttps?://[^\s/$.?#].[^\s]*", re.IGNORECASE),
@@ -166,6 +177,18 @@ BUILT_IN_PATTERNS: list[BuiltInPattern] = [
     ),
 ]
 
+DEFAULT_ANALYZE_ENTITY_ALLOW_LIST = ["EMAIL_ADDRESS", "IP_ADDRESS", "PHONE_NUMBER"]
+DEFAULT_ANALYZE_CONTEXT_WORDS = [
+    "email",
+    "mail",
+    "phone",
+    "contact",
+    "ip",
+    "address",
+]
+DEFAULT_ANALYZE_MIN_CONFIDENCE = 0.8
+DEFAULT_BUILT_IN_ONLY_ENTITY_TYPES = {"EMAIL_ADDRESS", "IP_ADDRESS", "PHONE_NUMBER"}
+
 
 class TextDetectionService:
     """Analyze text content into reviewable findings and optional job records."""
@@ -191,6 +214,7 @@ class TextDetectionService:
             configuration_ids,
             default_transformation,
             pii_detection,
+            built_in_entity_allow_list,
         ) = self.resolve_detection_context(
             content_type=request.content_type,
             pattern_ids=request.pattern_ids,
@@ -209,6 +233,7 @@ class TextDetectionService:
             entities=entities,
             default_transformation=default_transformation,
             pii_detection=pii_detection,
+            built_in_entity_allow_list=built_in_entity_allow_list,
         )
 
         job_id: str | None = None
@@ -246,12 +271,19 @@ class TextDetectionService:
         entities: list[object],
         default_transformation: TransformationRule | None,
         pii_detection: PIIDetectionOptions | None = None,
+        built_in_entity_allow_list: list[str] | None = None,
     ) -> list[FindingRecord]:
         """Build transient findings for text content without persisting a job."""
 
         findings: list[FindingRecord] = []
         if apply_builtins:
-            findings.extend(self._detect_built_ins(content, default_transformation))
+            findings.extend(
+                self._detect_built_ins(
+                    content,
+                    default_transformation,
+                    allow_entity_types=built_in_entity_allow_list,
+                )
+            )
             findings.extend(
                 self._detect_pii_entities(
                     content,
@@ -329,10 +361,25 @@ class TextDetectionService:
         configuration_ids: list[str],
         default_transformation: TransformationRule | None = None,
         pii_detection: PIIDetectionOptions | None = None,
-    ) -> tuple[list[object], list[object], TransformationRule | None, PIIDetectionOptions | None]:
+    ) -> tuple[
+        list[object],
+        list[object],
+        TransformationRule | None,
+        PIIDetectionOptions | None,
+        list[str] | None,
+    ]:
         """Resolve reusable detection inputs for transient text analysis."""
 
-        patterns, entities, _, _, _, resolved_default, resolved_pii_detection = (
+        (
+            patterns,
+            entities,
+            _,
+            _,
+            _,
+            resolved_default,
+            resolved_pii_detection,
+            built_in_entity_allow_list,
+        ) = (
             self.resolve_detection_context(
                 content_type=content_type,
                 pattern_ids=pattern_ids,
@@ -342,7 +389,13 @@ class TextDetectionService:
                 pii_detection=pii_detection,
             )
         )
-        return patterns, entities, resolved_default, resolved_pii_detection
+        return (
+            patterns,
+            entities,
+            resolved_default,
+            resolved_pii_detection,
+            built_in_entity_allow_list,
+        )
 
     def resolve_detection_context(
         self,
@@ -361,6 +414,7 @@ class TextDetectionService:
         list[str],
         TransformationRule | None,
         PIIDetectionOptions | None,
+        list[str] | None,
     ]:
         configurations = self.studio.resolve_configurations(configuration_ids)
         resolved_pattern_ids = unique_ids(
@@ -379,13 +433,18 @@ class TextDetectionService:
             for item in self.studio.resolve_custom_entities(resolved_custom_entity_ids)
             if item.is_active
         ]
-        resolved_default = self._resolve_default_transformation(
-            default_transformation,
-            configurations,
-        )
+        resolved_default = self._resolve_default_transformation(default_transformation)
         resolved_pii_detection = self._resolve_pii_detection(
             pii_detection,
             configurations,
+            has_analyze_configuration_inputs=bool(
+                pattern_ids or custom_entity_ids or configuration_ids or pii_detection
+            ),
+        )
+        built_in_entity_allow_list = self._resolve_built_in_entity_allow_list(
+            has_analyze_configuration_inputs=bool(
+                pattern_ids or custom_entity_ids or configuration_ids or pii_detection
+            ),
         )
         _ = content_type
         return (
@@ -396,19 +455,14 @@ class TextDetectionService:
             unique_ids(configuration_ids),
             resolved_default,
             resolved_pii_detection,
+            built_in_entity_allow_list,
         )
 
     def _resolve_default_transformation(
         self,
         request_default: TransformationRule | None,
-        configurations: list[object],
     ) -> TransformationRule | None:
-        if request_default is not None:
-            return request_default
-        for config in configurations:
-            if getattr(config, "default_text_transformation", None):
-                return TransformationRule.model_validate(config.default_text_transformation)
-        return None
+        return request_default
 
     def _coalesce_transformation(
         self,
@@ -436,9 +490,14 @@ class TextDetectionService:
         self,
         text: str,
         default_transformation: TransformationRule | None,
+        *,
+        allow_entity_types: list[str] | None = None,
     ) -> list[FindingRecord]:
         findings: list[FindingRecord] = []
+        allowed = set(allow_entity_types) if allow_entity_types else None
         for definition in BUILT_IN_PATTERNS:
+            if allowed is not None and definition.entity_type not in allowed:
+                continue
             transformation = default_transformation or definition.transformation
             for match in definition.pattern.finditer(text):
                 start_index = match.start(definition.group_index or 0)
@@ -472,12 +531,16 @@ class TextDetectionService:
         detector_language = pii_detection.language if pii_detection is not None else None
         detector_entities = pii_detection.entity_allow_list if pii_detection is not None else None
         detector_context = pii_detection.context_words if pii_detection is not None else None
+        detector_min_confidence = (
+            pii_detection.min_confidence if pii_detection is not None else None
+        )
         try:
             detected_entities = self.pii_detector.detect_entities(
                 text,
                 language=detector_language,
                 entity_allow_list=detector_entities,
                 context_words=detector_context,
+                min_confidence=detector_min_confidence,
             )
         except TypeError:
             detected_entities = self.pii_detector.detect_entities(text)
@@ -509,11 +572,15 @@ class TextDetectionService:
         self,
         request_pii_detection: PIIDetectionOptions | None,
         configurations: list[object],
+        *,
+        has_analyze_configuration_inputs: bool,
     ) -> PIIDetectionOptions | None:
         configuration_options = [
             self._configuration_pii_detection(configuration) for configuration in configurations
         ]
         resolved = merge_pii_detection_options(*configuration_options, request_pii_detection)
+        if resolved is None and not has_analyze_configuration_inputs:
+            resolved = self._default_analyze_pii_detection()
         if resolved is None:
             return None
 
@@ -529,6 +596,22 @@ class TextDetectionService:
                 f"Supported languages: {supported}",
             )
         return resolved
+
+    def _resolve_built_in_entity_allow_list(
+        self,
+        *,
+        has_analyze_configuration_inputs: bool,
+    ) -> list[str] | None:
+        if has_analyze_configuration_inputs:
+            return None
+        return sorted(DEFAULT_BUILT_IN_ONLY_ENTITY_TYPES)
+
+    def _default_analyze_pii_detection(self) -> PIIDetectionOptions:
+        return PIIDetectionOptions(
+            entity_allow_list=DEFAULT_ANALYZE_ENTITY_ALLOW_LIST,
+            context_words=DEFAULT_ANALYZE_CONTEXT_WORDS,
+            min_confidence=DEFAULT_ANALYZE_MIN_CONFIDENCE,
+        )
 
     def _configuration_pii_detection(self, configuration: object) -> PIIDetectionOptions | None:
         raw_value = getattr(configuration, "extra_data", {}).get("pii_detection")

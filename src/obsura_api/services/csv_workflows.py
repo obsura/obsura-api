@@ -297,6 +297,7 @@ class CSVWorkflowService:
             configuration_ids,
             default_transformation,
             pii_detection,
+            built_in_entity_allow_list,
         ) = self.text_detection.resolve_detection_context(
             content_type=ContentType.CSV,
             pattern_ids=manifest.pattern_ids,
@@ -313,6 +314,7 @@ class CSVWorkflowService:
             entities=entities,
             default_transformation=default_transformation,
             pii_detection=pii_detection,
+            built_in_entity_allow_list=built_in_entity_allow_list,
             delimiter=manifest.delimiter,
             quotechar=manifest.quotechar,
         )
@@ -394,6 +396,7 @@ class CSVWorkflowService:
         entities: list[object],
         default_transformation: TransformationRule | None,
         pii_detection: PIIDetectionOptions | None,
+        built_in_entity_allow_list: list[str] | None,
         delimiter: str,
         quotechar: str,
     ) -> list[FindingRecord]:
@@ -413,6 +416,7 @@ class CSVWorkflowService:
                     entities=entities,
                     default_transformation=default_transformation,
                     pii_detection=pii_detection,
+                    built_in_entity_allow_list=built_in_entity_allow_list,
                 )
                 column_name = self._column_name(parsed.headers, column_index)
                 cell_hash = hash_value(cell)

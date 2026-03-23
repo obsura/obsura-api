@@ -87,6 +87,7 @@ class StructuredWorkflowService:
             configuration_ids,
             default_transformation,
             pii_detection,
+            built_in_entity_allow_list,
         ) = self.text_detection.resolve_detection_context(
             content_type=ContentType.STRUCTURED_TEXT,
             pattern_ids=request.pattern_ids,
@@ -103,6 +104,7 @@ class StructuredWorkflowService:
             entities=entities,
             default_transformation=default_transformation,
             pii_detection=pii_detection,
+            built_in_entity_allow_list=built_in_entity_allow_list,
         )
         job_id = None
         if request.persist_job:
@@ -224,6 +226,7 @@ class StructuredWorkflowService:
         entities: list[object],
         default_transformation: TransformationRule | None,
         pii_detection: PIIDetectionOptions | None,
+        built_in_entity_allow_list: list[str] | None,
     ) -> list[FindingRecord]:
         findings: list[FindingRecord] = []
         for path_tokens, path, value in self._iter_string_leaves(data):
@@ -237,6 +240,7 @@ class StructuredWorkflowService:
                 entities=entities,
                 default_transformation=default_transformation,
                 pii_detection=pii_detection,
+                built_in_entity_allow_list=built_in_entity_allow_list,
             )
             for finding in text_findings:
                 metadata = dict(finding.metadata)
