@@ -466,3 +466,153 @@ def test_text_analysis_falls_back_to_minimal_pii_profile_when_no_configurations(
     assert "EMAIL_ADDRESS" in entity_types
     assert "PHONE_NUMBER" in entity_types
     assert "JWT" not in entity_types
+
+
+def test_text_analysis_accepts_confidence_profile_and_resolves_threshold(client) -> None:
+    captured: dict[str, object] = {}
+
+    class FakePIIDetector:
+        name = "fake-pii-detector"
+        supported = True
+        supported_languages = ("en",)
+        custom_recognizers_configured = False
+
+        def detect_entities(
+            self,
+            text: str,
+            *,
+            language: str | None = None,
+            entity_allow_list: list[str] | None = None,
+            context_words: list[str] | None = None,
+            min_confidence: float | None = None,
+        ) -> list[DetectedPIIEntity]:
+            captured["min_confidence"] = min_confidence
+            return [
+                DetectedPIIEntity(
+                    entity_type="PERSON",
+                    start_index=0,
+                    end_index=8,
+                    confidence=0.86,
+                )
+            ]
+
+    client.app.state.container.pii_detector = FakePIIDetector()
+
+    response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "John Doe",
+            "persist_job": False,
+            "pii_detection": {
+                "confidence_profile": "strict",
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["min_confidence"] == 0.9
+    assert response.json()["data"]["findings"] == []
+
+
+def test_text_analysis_supports_entity_level_min_confidence(client) -> None:
+    class FakePIIDetector:
+        name = "fake-pii-detector"
+        supported = True
+        supported_languages = ("en",)
+        custom_recognizers_configured = False
+
+        def detect_entities(
+            self,
+            text: str,
+            *,
+            language: str | None = None,
+            entity_allow_list: list[str] | None = None,
+            context_words: list[str] | None = None,
+            min_confidence: float | None = None,
+        ) -> list[DetectedPIIEntity]:
+            return [
+                DetectedPIIEntity(
+                    entity_type="PERSON",
+                    start_index=0,
+                    end_index=8,
+                    confidence=0.83,
+                ),
+                DetectedPIIEntity(
+                    entity_type="PHONE_NUMBER",
+                    start_index=9,
+                    end_index=21,
+                    confidence=0.83,
+                ),
+            ]
+
+    client.app.state.container.pii_detector = FakePIIDetector()
+
+    response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "John Doe 01000000000",
+            "persist_job": False,
+            "pii_detection": {
+                "min_confidence": 0.8,
+                "entity_min_confidence": {
+                    "PERSON": 0.9,
+                    "PHONE_NUMBER": 0.8,
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    findings = response.json()["data"]["findings"]
+    entity_types = {item["entity_type"] for item in findings}
+    assert "PERSON" not in entity_types
+    assert "PHONE_NUMBER" in entity_types
+
+
+def test_text_analysis_adds_pii_explainability_metadata(client) -> None:
+    class FakePIIDetector:
+        name = "fake-pii-detector"
+        supported = True
+        supported_languages = ("en",)
+        custom_recognizers_configured = False
+
+        def detect_entities(
+            self,
+            text: str,
+            *,
+            language: str | None = None,
+            entity_allow_list: list[str] | None = None,
+            context_words: list[str] | None = None,
+            min_confidence: float | None = None,
+        ) -> list[DetectedPIIEntity]:
+            return [
+                DetectedPIIEntity(
+                    entity_type="PERSON",
+                    start_index=0,
+                    end_index=8,
+                    confidence=0.92,
+                )
+            ]
+
+    client.app.state.container.pii_detector = FakePIIDetector()
+
+    response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "John Doe",
+            "persist_job": False,
+            "pii_detection": {
+                "language": "en",
+                "confidence_profile": "balanced",
+                "min_confidence": 0.8,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    findings = response.json()["data"]["findings"]
+    person_finding = next(item for item in findings if item["entity_type"] == "PERSON")
+    assert person_finding["metadata"]["pii_detection_reason"] == "provider_entity_match"
+    assert person_finding["metadata"]["pii_detector_language"] == "en"
+    assert person_finding["metadata"]["pii_confidence_threshold"] == 0.8
+    assert person_finding["metadata"]["pii_confidence_profile"] == "balanced"
