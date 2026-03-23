@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 CONFIDENCE_PROFILE_THRESHOLDS: dict[str, float] = {
     "strict": 0.9,
@@ -40,8 +40,13 @@ class PIIDetectionOptions(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    enabled: bool | None = None
     language: str | None = Field(default=None, min_length=2, max_length=16)
-    entity_allow_list: list[str] = Field(default_factory=list)
+    entity_allow_list: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("entity_allow_list", "entity_include_list"),
+    )
+    entity_exclude_list: list[str] = Field(default_factory=list)
     context_words: list[str] = Field(default_factory=list)
     confidence_profile: str | None = None
     min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -58,6 +63,12 @@ class PIIDetectionOptions(BaseModel):
     @field_validator("entity_allow_list")
     @classmethod
     def normalize_entity_allow_list(cls, values: list[str]) -> list[str]:
+        normalized = [item.strip().upper() for item in values if item and item.strip()]
+        return _unique_preserve_order(normalized)
+
+    @field_validator("entity_exclude_list")
+    @classmethod
+    def normalize_entity_exclude_list(cls, values: list[str]) -> list[str]:
         normalized = [item.strip().upper() for item in values if item and item.strip()]
         return _unique_preserve_order(normalized)
 
@@ -125,6 +136,25 @@ class PIIDetectionOptions(BaseModel):
             return per_entity
         return max(per_entity, explicit_threshold)
 
+    def resolved_entity_allow_list(self) -> list[str]:
+        """Return effective include-list after applying excludes."""
+
+        if not self.entity_allow_list:
+            return []
+        denied = set(self.entity_exclude_list)
+        return [entity for entity in self.entity_allow_list if entity not in denied]
+
+    def is_entity_enabled(self, entity_type: str) -> bool:
+        """Return whether the given entity should be emitted after include/exclude rules."""
+
+        normalized = entity_type.strip().upper()
+        if normalized in set(self.entity_exclude_list):
+            return False
+        include = self.resolved_entity_allow_list()
+        if not include:
+            return True
+        return normalized in set(include)
+
 
 def merge_pii_detection_options(
     *options: PIIDetectionOptions | None,
@@ -136,6 +166,7 @@ def merge_pii_detection_options(
         return None
 
     language = next((item.language for item in reversed(active) if item.language), None)
+    enabled = next((item.enabled for item in reversed(active) if item.enabled is not None), None)
     confidence_profile = next(
         (item.confidence_profile for item in reversed(active) if item.confidence_profile),
         None,
@@ -152,6 +183,10 @@ def merge_pii_detection_options(
             allowed &= set(values)
         entity_allow_list = [item for item in scoped_allow_lists[0] if item in allowed]
 
+    entity_exclude_list = _unique_preserve_order(
+        [entity for item in active for entity in item.entity_exclude_list],
+    )
+
     min_confidence = max(
         (item.min_confidence for item in active if item.min_confidence is not None),
         default=None,
@@ -166,16 +201,20 @@ def merge_pii_detection_options(
             )
 
     merged = PIIDetectionOptions(
+        enabled=enabled,
         language=language,
         entity_allow_list=entity_allow_list,
+        entity_exclude_list=entity_exclude_list,
         context_words=context_words,
         confidence_profile=confidence_profile,
         min_confidence=min_confidence,
         entity_min_confidence=entity_min_confidence,
     )
     if not (
-        merged.language
+        merged.enabled is not None
+        or merged.language
         or merged.entity_allow_list
+        or merged.entity_exclude_list
         or merged.context_words
         or merged.confidence_profile
         or merged.min_confidence is not None

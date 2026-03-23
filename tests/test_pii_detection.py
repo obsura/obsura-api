@@ -113,6 +113,9 @@ def test_text_analysis_detects_presidio_entities_from_provider(client) -> None:
         json={
             "content": "Customer is John Doe from Cairo",
             "persist_job": False,
+            "pii_detection": {
+                "entity_include_list": ["PERSON"],
+            },
         },
     )
 
@@ -232,6 +235,9 @@ def test_image_ocr_analysis_detects_pii_from_provider(client) -> None:
                     "title": "OCR PII review",
                     "content_type": "screenshot",
                     "detect_text": True,
+                    "pii_detection": {
+                        "entity_include_list": ["PERSON"],
+                    },
                     "persist_job": False,
                 }
             )
@@ -616,3 +622,99 @@ def test_text_analysis_adds_pii_explainability_metadata(client) -> None:
     assert person_finding["metadata"]["pii_detector_language"] == "en"
     assert person_finding["metadata"]["pii_confidence_threshold"] == 0.8
     assert person_finding["metadata"]["pii_confidence_profile"] == "balanced"
+
+
+def test_text_analysis_can_disable_pii_detection_with_enabled_flag(client) -> None:
+    class FakePIIDetector:
+        name = "fake-pii-detector"
+        supported = True
+        supported_languages = ("en",)
+        custom_recognizers_configured = False
+
+        def detect_entities(
+            self,
+            text: str,
+            *,
+            language: str | None = None,
+            entity_allow_list: list[str] | None = None,
+            context_words: list[str] | None = None,
+            min_confidence: float | None = None,
+        ) -> list[DetectedPIIEntity]:
+            return [
+                DetectedPIIEntity(
+                    entity_type="PERSON",
+                    start_index=0,
+                    end_index=8,
+                    confidence=0.92,
+                )
+            ]
+
+    client.app.state.container.pii_detector = FakePIIDetector()
+
+    response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "John Doe",
+            "persist_job": False,
+            "pii_detection": {
+                "enabled": False,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    findings = response.json()["data"]["findings"]
+    entity_types = {item["entity_type"] for item in findings}
+    assert "PERSON" not in entity_types
+
+
+def test_text_analysis_supports_include_and_exclude_entity_lists(client) -> None:
+    class FakePIIDetector:
+        name = "fake-pii-detector"
+        supported = True
+        supported_languages = ("en",)
+        custom_recognizers_configured = False
+
+        def detect_entities(
+            self,
+            text: str,
+            *,
+            language: str | None = None,
+            entity_allow_list: list[str] | None = None,
+            context_words: list[str] | None = None,
+            min_confidence: float | None = None,
+        ) -> list[DetectedPIIEntity]:
+            return [
+                DetectedPIIEntity(
+                    entity_type="PERSON",
+                    start_index=0,
+                    end_index=8,
+                    confidence=0.93,
+                ),
+                DetectedPIIEntity(
+                    entity_type="PHONE_NUMBER",
+                    start_index=9,
+                    end_index=21,
+                    confidence=0.93,
+                ),
+            ]
+
+    client.app.state.container.pii_detector = FakePIIDetector()
+
+    response = client.post(
+        "/api/v1/workflows/text/analyze",
+        json={
+            "content": "John Doe 01000000000",
+            "persist_job": False,
+            "pii_detection": {
+                "entity_include_list": ["PERSON", "PHONE_NUMBER"],
+                "entity_exclude_list": ["PERSON"],
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    findings = response.json()["data"]["findings"]
+    entity_types = {item["entity_type"] for item in findings}
+    assert "PERSON" not in entity_types
+    assert "PHONE_NUMBER" in entity_types
