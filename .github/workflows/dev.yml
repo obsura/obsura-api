@@ -97,8 +97,13 @@ jobs:
           images: ${{ steps.vars.outputs.image_name }}
           tags: |
             type=raw,value=dev
-            type=sha,format=short,prefix=dev-
+            type=sha,format=long
           labels: |
+            org.opencontainers.image.title=obsura-api
+            org.opencontainers.image.description=Obsura API development image
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          annotations: |
             org.opencontainers.image.title=obsura-api
             org.opencontainers.image.description=Obsura API development image
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -112,5 +117,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

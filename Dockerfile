@@ -30,6 +30,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/opt/venv/bin:$PATH" \
     OBSURA_ENVIRONMENT=production
 
+LABEL org.opencontainers.image.title="obsura-api" \
+      org.opencontainers.image.description="Obsura API development image" \
+      org.opencontainers.image.licenses="MIT"
+
 WORKDIR /app
 
 RUN apt-get update \
