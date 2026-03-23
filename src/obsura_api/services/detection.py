@@ -186,6 +186,7 @@ DEFAULT_ANALYZE_CONTEXT_WORDS = [
     "ip",
     "address",
 ]
+DEFAULT_ANALYZE_CONFIDENCE_PROFILE = "balanced"
 DEFAULT_ANALYZE_MIN_CONFIDENCE = 0.8
 DEFAULT_BUILT_IN_ONLY_ENTITY_TYPES = {"EMAIL_ADDRESS", "IP_ADDRESS", "PHONE_NUMBER"}
 
@@ -530,7 +531,7 @@ class TextDetectionService:
         detector_entities = pii_detection.entity_allow_list if pii_detection is not None else None
         detector_context = pii_detection.context_words if pii_detection is not None else None
         detector_min_confidence = (
-            pii_detection.min_confidence if pii_detection is not None else None
+            pii_detection.resolved_min_confidence() if pii_detection is not None else None
         )
         try:
             detected_entities = self.pii_detector.detect_entities(
@@ -548,6 +549,9 @@ class TextDetectionService:
         for entity in detected_entities:
             if self._overlaps_existing_span(entity, existing_findings):
                 continue
+            entity_threshold = self._effective_entity_threshold(pii_detection, entity.entity_type)
+            if entity_threshold is not None and entity.confidence < entity_threshold:
+                continue
             findings.append(
                 self._build_text_finding(
                     text=text,
@@ -562,6 +566,14 @@ class TextDetectionService:
                         semantic_label=entity.entity_type,
                     ),
                     confidence=entity.confidence,
+                    metadata={
+                        "pii_detection_reason": "provider_entity_match",
+                        "pii_detector_language": detector_language,
+                        "pii_confidence_threshold": entity_threshold,
+                        "pii_confidence_profile": (
+                            pii_detection.confidence_profile if pii_detection else None
+                        ),
+                    },
                 ),
             )
         return findings
@@ -608,8 +620,18 @@ class TextDetectionService:
         return PIIDetectionOptions(
             entity_allow_list=DEFAULT_ANALYZE_ENTITY_ALLOW_LIST,
             context_words=DEFAULT_ANALYZE_CONTEXT_WORDS,
+            confidence_profile=DEFAULT_ANALYZE_CONFIDENCE_PROFILE,
             min_confidence=DEFAULT_ANALYZE_MIN_CONFIDENCE,
         )
+
+    def _effective_entity_threshold(
+        self,
+        pii_detection: PIIDetectionOptions | None,
+        entity_type: str,
+    ) -> float | None:
+        if pii_detection is None:
+            return None
+        return pii_detection.resolved_min_confidence(entity_type)
 
     def _configuration_pii_detection(self, configuration: object) -> PIIDetectionOptions | None:
         raw_value = getattr(configuration, "extra_data", {}).get("pii_detection")
@@ -700,6 +722,7 @@ class TextDetectionService:
         entity_name: str,
         transformation: TransformationRule | None,
         confidence: float,
+        metadata: dict[str, object] | None = None,
     ) -> FindingRecord:
         matched_text = text[start_index:end_index]
         return FindingRecord(
@@ -713,6 +736,7 @@ class TextDetectionService:
             matched_text_hash=hash_value(matched_text),
             confidence=confidence,
             transformation=transformation,
+            metadata=metadata or {},
         )
 
     def _pii_entity_name(self, entity: DetectedPIIEntity) -> str:
