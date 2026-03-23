@@ -51,6 +51,7 @@ Status meanings:
 | `tesseract-ocr-eng` | Installed in the runtime image | English OCR language package for Tesseract | Image/runtime component |
 | `postgres:17-alpine` | `docker-compose.yaml` example service | Separate upstream PostgreSQL and image licensing apply | Image/runtime component |
 | `en_core_web_sm` | Downloaded in the Docker builder flow | spaCy English model used for the Presidio-enabled image build | Image/runtime component |
+| `es_core_news_sm` | Downloaded in the Docker builder flow | spaCy Spanish model used for the Presidio-enabled image build | Image/runtime component |
 
 ## Notes
 

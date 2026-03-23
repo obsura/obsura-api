@@ -48,6 +48,7 @@ def test_pattern_from_selection_and_search(client) -> None:
         "language": "en",
         "entity_allow_list": ["EMAIL_ADDRESS", "IP_ADDRESS"],
         "context_words": ["email", "server"],
+        "min_confidence": None,
     }
 
     search_response = client.get(

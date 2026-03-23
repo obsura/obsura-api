@@ -1,5 +1,7 @@
 FROM python:3.13-slim AS builder
 
+ARG OBSURA_SPACY_MODELS="en_core_web_sm es_core_news_sm"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -14,7 +16,11 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 
 RUN pip install .[presidio] \
-    && python -m spacy download en_core_web_sm
+    && if [ -n "$OBSURA_SPACY_MODELS" ]; then \
+        for model in $OBSURA_SPACY_MODELS; do \
+          python -m spacy download "$model"; \
+        done; \
+      fi
 
 
 FROM python:3.13-slim AS runtime

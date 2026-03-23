@@ -82,7 +82,7 @@ def test_image_analysis_detects_faces_from_provider(client) -> None:
     ]
 
 
-def test_image_transform_uses_detected_faces_with_configuration_default(client) -> None:
+def test_image_transform_ignores_configuration_default_for_detected_faces(client) -> None:
     class FakeFaceDetector:
         name = "fake-face-detector"
         supported = True
@@ -139,4 +139,4 @@ def test_image_transform_uses_detected_faces_with_configuration_default(client) 
             )
         )
     )
-    assert transformed.getpixel((4, 4)) != (255, 255, 255)
+    assert transformed.getpixel((4, 4)) == (255, 255, 255)

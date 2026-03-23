@@ -250,6 +250,7 @@ class DocumentWorkflowService:
             configuration_ids,
             default_transformation,
             pii_detection,
+            built_in_entity_allow_list,
         ) = self.text_detection.resolve_detection_context(
             content_type=ContentType.DOCUMENT,
             pattern_ids=manifest.pattern_ids,
@@ -266,6 +267,7 @@ class DocumentWorkflowService:
             entities=entities,
             default_transformation=default_transformation,
             pii_detection=pii_detection,
+            built_in_entity_allow_list=built_in_entity_allow_list,
         )
         return ResolvedDocumentAnalysis(
             title=manifest.title or Path(filename).name,
@@ -287,6 +289,7 @@ class DocumentWorkflowService:
         entities: list[object],
         default_transformation: TransformationRule | None,
         pii_detection: PIIDetectionOptions | None,
+        built_in_entity_allow_list: list[str] | None,
     ) -> list[FindingRecord]:
         findings: list[FindingRecord] = []
         for page in document.pages:
@@ -300,6 +303,7 @@ class DocumentWorkflowService:
                 entities=entities,
                 default_transformation=default_transformation,
                 pii_detection=pii_detection,
+                built_in_entity_allow_list=built_in_entity_allow_list,
             )
             page_hash = hash_value(page.text)
             for finding in page_findings:

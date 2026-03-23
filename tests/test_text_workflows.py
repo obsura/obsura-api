@@ -133,6 +133,9 @@ def test_built_in_technical_detectors_cover_common_secret_shapes(client) -> None
                 "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7 example@host\n"
                 "-----BEGIN PRIVATE KEY-----\nabc123\n-----END PRIVATE KEY-----\n"
             ),
+            "pii_detection": {
+                "min_confidence": 0.8,
+            },
             "persist_job": False,
         },
     )

@@ -35,6 +35,7 @@ class PIIDetector(Protocol):
         language: str | None = None,
         entity_allow_list: list[str] | None = None,
         context_words: list[str] | None = None,
+        min_confidence: float | None = None,
     ) -> list[DetectedPIIEntity]:
         """Return detected PII entities in the provided text."""
 
@@ -54,6 +55,7 @@ class NoOpPIIDetector:
         language: str | None = None,
         entity_allow_list: list[str] | None = None,
         context_words: list[str] | None = None,
+        min_confidence: float | None = None,
     ) -> list[DetectedPIIEntity]:
         return []
 
@@ -137,6 +139,7 @@ class PresidioPIIDetector:
         language: str | None = None,
         entity_allow_list: list[str] | None = None,
         context_words: list[str] | None = None,
+        min_confidence: float | None = None,
     ) -> list[DetectedPIIEntity]:
         if not text.strip():
             return []
@@ -148,18 +151,22 @@ class PresidioPIIDetector:
                 f"Unsupported PII language `{active_language}`. Supported languages: {supported}",
             )
 
+        active_threshold = self.score_threshold
+        if min_confidence is not None:
+            active_threshold = max(active_threshold, min_confidence)
+
         results = self.analyzer.analyze(
             text=text,
             language=active_language,
             entities=entity_allow_list or None,
             context=context_words or None,
-            score_threshold=self.score_threshold,
+            score_threshold=active_threshold,
             return_decision_process=False,
         )
         entities: list[DetectedPIIEntity] = []
         for result in results:
             score = float(getattr(result, "score", 0.0) or 0.0)
-            if score < self.score_threshold:
+            if score < active_threshold:
                 continue
             entities.append(
                 DetectedPIIEntity(
